@@ -1,0 +1,12 @@
+name: corona-sickbed
+title: corona-sickbed
+username:
+account: youngjunna
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1884587
+bundleId: 2841409
+url: https://youngjunna.shinyapps.io/corona-sickbed/
+when: 1583065904.3776
+asMultiple: FALSE
+asStatic: FALSE
