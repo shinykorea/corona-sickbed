@@ -6,7 +6,7 @@
 
 ## 필요 기능
 
-1. **로그인**: 관련자만 볼 수 있도록 
+1. **로그인**: 관련자만 볼 수 있도록, [shinymanager](https://blog.zarathu.com/posts/2019-08-25-shinymanager/) 추천 
 
 2. 음압병상 갖춘 병원들이 표시된 **경기도 지도**.
 
