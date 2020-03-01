@@ -15,3 +15,7 @@
  - A-E 등급 외 기타도 있어 고민 필요.
  
 4. 타 시도 확장 고려한 개발
+
+## 기타
+- Test Server: https://youngjunna.shinyapps.io/corona-sickbed
+- Coding Style Rule: [Tidyverse style](https://style.tidyverse.org/)
