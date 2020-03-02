@@ -17,5 +17,6 @@
 4. 타 시도 확장 고려한 개발
 
 ## 기타
-- Test Server: https://youngjunna.shinyapps.io/corona-sickbed, http://app.zarathu.com/corona/corona-sickbed/
+- Test Server: https://youngjunna.shinyapps.io/corona-sickbed
+- Deploy Server: http://app.zarathu.com/corona/corona-sickbed/
 - Coding Style Rule: [Tidyverse style](https://style.tidyverse.org/)
