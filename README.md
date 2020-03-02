@@ -17,6 +17,7 @@
 4. 타 시도 확장 고려한 개발
 
 ## 기타
+- Input Data Example: [download](https://github.com/YoungjunNa/corona-sickbed/raw/master/data-example/2020-02-23.xlsx)
 - Test Server: https://youngjunna.shinyapps.io/corona-sickbed
 - Deploy Server: http://app.zarathu.com/corona/corona-sickbed/
 - Coding Style Rule: [Tidyverse style](https://style.tidyverse.org/)
