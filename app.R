@@ -11,6 +11,7 @@ library(leaflet)
 library(highcharter)
 library(ggthemes)
 library(ggrepel)
+library(waffle) # devtools::install_github("hrbrmstr/waffle")
 
 library(DT)
 library(formattable)
@@ -30,8 +31,6 @@ library(shinymanager)
 #  stringsAsFactors = FALSE)
 
 #create_db(credentials_data = credentials, sqlite_path = "database.sqlite")
-
-
 
 ## header ----
 header <- dashboardHeader(
@@ -109,7 +108,10 @@ body <- dashboardBody(
     ),
     fluidPage(
       ### map ----
-      column(12, leafletOutput("dashboard_map")),
+      column(8, leafletOutput("dashboard_map")),
+      column(4, plotOutput("dashboard_waffle"))
+    ),
+    fluidPage(
       ### summary table ----
       column(12, dataTableOutput("data_sickbed"))
     )
@@ -127,7 +129,10 @@ body <- dashboardBody(
 )
 
 # ui ----
-ui <- dashboardPage(header, sidebar, body) %>% secure_app(enable_admin = T)
+ui <- dashboardPage(header, sidebar, body) 
+
+# login 기능은 개발과정에서는 생략하고 배포시에만 적용
+# %>% secure_app(enable_admin = T) 
 
 
 # server ----
@@ -251,6 +256,26 @@ server <- function(input, output, session) {
       addTiles() %>%
       addMarkers(label = ~hospital) 
   })
+  
+  ## waffle ----
+  output$dashboard_waffle <- renderPlot({
+    sickbed() %>%
+      group_by(bed) %>%
+      summarise(n = n()) %>%
+      mutate(bed = ifelse(bed == 1, "In Use", "Empty")) %>%
+      mutate(bed = factor(bed)) %>%
+      ggplot(aes(fill = bed, values = n)) +
+      geom_waffle(n_rows = 8, color = "white", flip = TRUE) +
+      scale_fill_manual(
+        name = NULL,
+        values = c("#fe346e", "#5b8c5a"),
+        labels = c("In Use", "Empty")
+      ) +
+      coord_equal() +
+      theme_enhance_waffle() +
+      theme_void() +
+      theme(legend.position = "bottom")
+  })
 
   ## data ----
   output$data_sickbed <- renderDataTable({
@@ -265,6 +290,7 @@ server <- function(input, output, session) {
         )
       ) %>%
       formatStyle("사용율",
+                  color = "white",
                   background = styleColorBar(c(0, 100), "#ce0f3d"),
                   backgroundSize = "98% 88%",
                   backgroundRepeat = "no-repeat",
