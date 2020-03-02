@@ -8,6 +8,7 @@ library(shiny.info)
 
 library(plotly)
 library(leaflet)
+library(leaflet.minicharts)
 library(highcharter)
 library(ggthemes)
 library(ggrepel)
@@ -154,6 +155,7 @@ server <- function(input, output, session) {
     sickbed <- readxl::read_excel("data-example/2020-02-23.xlsx")
     sickbed <- sickbed %>%
       mutate(date = ymd(date)) %>%
+      mutate(중증도변화 = factor(중증도변화, level = c("경증", "중증도", "중증", "최중증"))) %>%
       mutate(bed = ifelse(is.na(이름) == TRUE, 0, 1))
     return(sickbed)
   })
@@ -171,8 +173,7 @@ server <- function(input, output, session) {
   
   join <- reactive({
     join <- hospital() %>%
-      left_join(summary()) %>%
-      mutate(capacity = ifelse(사용율 >= 75, "low", ifelse(사용율 <= 50, "high", "mid")))
+      left_join(summary())
     return(join)
   })
 
@@ -251,10 +252,20 @@ server <- function(input, output, session) {
   ## map ----
   output$dashboard_map <- renderLeaflet({
     
-    join() %>%
-      leaflet() %>%
+    # join() %>%
+    #   leaflet() %>%
+    #   addTiles() %>%
+    #   addMarkers(label = ~hospital) 
+    
+    leaflet() %>%
       addTiles() %>%
-      addMarkers(label = ~hospital) 
+      addMinicharts(
+        join()$long, join()$lat,
+        type = "pie",
+        chartdata = join()[, c("사용", "여유")],
+        colorPalette = c("#fe346e", "#cccccc")
+      )
+    
   })
   
   ## waffle ----
@@ -279,8 +290,10 @@ server <- function(input, output, session) {
 
   ## data ----
   output$data_sickbed <- renderDataTable({
+      
+    summary() %>%
+      arrange(desc(사용율)) %>%
       datatable(
-        summary(),
         extensions = "Buttons",
         options = list(
           pageLength = 10,
