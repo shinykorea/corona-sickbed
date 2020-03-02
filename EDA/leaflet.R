@@ -28,8 +28,6 @@ leaflet() %>%
     colorPalette = c("#4fc13c", "#cccccc")
   )
 
-
-
 join %>%
   leaflet() %>%
   addTiles() %>%
@@ -66,4 +64,15 @@ sickbed %>%
   scale_fill_manual(values = c("green", "yellow", "orange", "red", "grey"))
 )
 
+plotly::ggplotly(
+sickbed %>%
+  ggplot(aes(중증도변화, 나이)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = 성별)) +
+  scale_color_manual(values = c("#fe346e", "#381460")) +
+  ggthemes::theme_few() +
+  labs(
+    title = "중증도별 나이분포"
+  )
+)
 
