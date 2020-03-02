@@ -183,7 +183,7 @@ server <- function(input, output, session) {
     sickbed <- sickbed %>%
       filter(hospital %in% input$checkbox) %>%
       mutate(date = ymd(date)) %>%
-      mutate(중증도변화 = factor(중증도변화, level = c("경증", "중증도", "중증", "최중증"))) %>%
+      mutate(중증도변화 = factor(중증도변화)) %>%
       mutate(bed = ifelse(is.na(이름) == TRUE, 0, 1))
     return(sickbed)
   })
@@ -291,12 +291,13 @@ server <- function(input, output, session) {
   output$dashboard_map <- renderLeaflet({
     leaflet() %>%
       addTiles() %>%
+      # addProviderTiles("CartoDB.VoyagerLabelsUnder") %>%
       addMinicharts(
         join()$long, join()$lat,
         type = "pie",
         chartdata = join()[, c("사용", "여유")],
         colorPalette = c("#fe346e", "#cccccc")
-      )
+      ) 
   })
 
   ## waffle ----

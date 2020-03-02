@@ -21,6 +21,7 @@ join <- hospital %>%
   
 leaflet() %>%
   addTiles() %>%
+  # addProviderTiles("CartoDB")  %>%
   addMinicharts(
     join$long, join$lat,
     type = "pie",
