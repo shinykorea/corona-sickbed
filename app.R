@@ -262,18 +262,18 @@ server <- function(input, output, session) {
     sickbed() %>%
       group_by(bed) %>%
       summarise(n = n()) %>%
-      mutate(bed = ifelse(bed == 1, "사용", "미사용")) %>%
+      mutate(bed = ifelse(bed == 1, "In Use", "Empty")) %>%
       mutate(bed = factor(bed)) %>%
       ggplot(aes(fill = bed, values = n)) +
       geom_waffle(n_rows = 8, color = "white", flip = TRUE) +
       scale_fill_manual(
         name = NULL,
         values = c("#fe346e", "#5b8c5a"),
-        labels = c("사용", "미사용")
+        labels = c("In Use", "Empty")
       ) +
       coord_equal() +
       theme_enhance_waffle() +
-      theme_void(base_family = "NanumGothic") +
+      theme_void() +
       theme(legend.position = "bottom")
   })
 

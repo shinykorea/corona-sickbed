@@ -13,6 +13,7 @@ summary <- sickbed %>%
   group_by(hospital) %>%
   summarise(전체 = n(), 사용 = sum(bed), 퍼센트 = round(사용/전체*100, 1))
 
+
 sickbed %>%
   group_by(bed) %>%
   summarise(n = n()) %>%
@@ -30,6 +31,8 @@ sickbed %>%
   theme_void(base_family = "NanumGothic") +
   theme(legend.position = "bottom") +
   labs(title = "전체병상 사용율")
+
+
 
 
 join <- hospital %>%
