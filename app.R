@@ -11,6 +11,7 @@ library(leaflet)
 library(highcharter)
 library(ggthemes)
 library(ggrepel)
+library(waffle) # devtools::install_github("hrbrmstr/waffle")
 
 library(DT)
 library(formattable)
@@ -107,7 +108,10 @@ body <- dashboardBody(
     ),
     fluidPage(
       ### map ----
-      column(12, leafletOutput("dashboard_map")),
+      column(8, leafletOutput("dashboard_map")),
+      column(4, plotOutput("dashboard_waffle"))
+    ),
+    fluidPage(
       ### summary table ----
       column(12, dataTableOutput("data_sickbed"))
     )
@@ -251,6 +255,26 @@ server <- function(input, output, session) {
       leaflet() %>%
       addTiles() %>%
       addMarkers(label = ~hospital) 
+  })
+  
+  ## waffle ----
+  output$dashboard_waffle <- renderPlot({
+    sickbed() %>%
+      group_by(bed) %>%
+      summarise(n = n()) %>%
+      mutate(bed = ifelse(bed == 1, "사용", "미사용")) %>%
+      mutate(bed = factor(bed)) %>%
+      ggplot(aes(fill = bed, values = n)) +
+      geom_waffle(n_rows = 8, color = "white", flip = TRUE) +
+      scale_fill_manual(
+        name = NULL,
+        values = c("#fe346e", "#5b8c5a"),
+        labels = c("사용", "미사용")
+      ) +
+      coord_equal() +
+      theme_enhance_waffle() +
+      theme_void(base_family = "NanumGothic") +
+      theme(legend.position = "bottom")
   })
 
   ## data ----
