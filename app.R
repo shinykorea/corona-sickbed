@@ -20,6 +20,19 @@ library(lubridate)
 library(purrr)
 library(zip)
 
+## Make login DB
+library(shinymanager) 
+
+#credentials <- data.frame(
+#  user = c("admin", "user1"),
+#  password = c("admin", "user1"),
+#  admin = c(T, F),
+#  stringsAsFactors = FALSE)
+
+#create_db(credentials_data = credentials, sqlite_path = "database.sqlite")
+
+
+
 ## header ----
 header <- dashboardHeader(
   title = "COVID-SickBed",
@@ -114,11 +127,17 @@ body <- dashboardBody(
 )
 
 # ui ----
-ui <- dashboardPage(header, sidebar, body)
+ui <- dashboardPage(header, sidebar, body) %>% secure_app(enable_admin = T)
+
 
 # server ----
 
 server <- function(input, output, session) {
+  
+  ## Apply login DB ----
+  res_auth <- secure_server(
+    check_credentials = check_credentials("database.sqlite")
+  )
 
   ## data ----
   hospital <- reactive({
