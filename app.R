@@ -45,7 +45,7 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     fileInput(
       "selFile",
-      "병실현황을 업로드 해주세요",
+      tags$a(href="https://github.com/shinykorea/corona-sickbed/blob/master/data-example/2020-02-23.xlsx?raw=true", tags$div(HTML(paste("병실현황을", tags$span(style="color:black", "업로드"), "해주세요", sep = "")))),
       buttonLabel = "파일선택"
     ),
 
