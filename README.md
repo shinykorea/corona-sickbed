@@ -6,9 +6,9 @@
 
 ## 필요 기능
 
-1. **로그인**: 관련자만 볼 수 있도록, [shinymanager](https://blog.zarathu.com/posts/2019-08-25-shinymanager/) 추천 
+1. ~~**로그인**: 관련자만 볼 수 있도록, [shinymanager](https://blog.zarathu.com/posts/2019-08-25-shinymanager/) 추천~~ 
 
-2. 음압병상 갖춘 병원들이 표시된 **경기도 지도**.
+2. ~~음압병상 갖춘 병원들이 표시된 **경기도 지도**.~~
 
 3. 각 **병원의 가용/전체 음압병상 수**를 직관적으로 확인. 병실등급 A-E 단계 존재하며 **등급별** 확인 가능해야 함.
  - 예) 분당서울대병원: A등급 보유병상 7개, A등급 가용병상 0개
@@ -18,4 +18,5 @@
 
 ## 기타
 - Test Server: https://youngjunna.shinyapps.io/corona-sickbed
+- Deploy Server: http://app.zarathu.com/corona/corona-sickbed/
 - Coding Style Rule: [Tidyverse style](https://style.tidyverse.org/)
