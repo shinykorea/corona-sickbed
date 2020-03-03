@@ -45,7 +45,7 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     fileInput(
       "selFile",
-      tags$a(href="https://github.com/shinykorea/corona-sickbed/blob/master/data-example/2020-02-23.xlsx?raw=true", tags$div(HTML(paste("병실현황을", tags$span(style="color:black", "업로드"), "해주세요", sep = "")))),
+      tags$a(href = "https://github.com/shinykorea/corona-sickbed/blob/master/data-example/2020-02-23.xlsx?raw=true", tags$div(HTML(paste("병실현황을", tags$span(style = "color:black", "업로드"), "해주세요", sep = "")))),
       buttonLabel = "파일선택"
     ),
 
@@ -75,7 +75,7 @@ sidebar <- dashboardSidebar(
 
     menuItem("데이터", tabName = "data", icon = icon("database")),
     menuItem("About", tabName = "about", icon = icon("star")),
-    
+
     uiOutput("ui_checkbox")
   )
 )
@@ -83,7 +83,7 @@ sidebar <- dashboardSidebar(
 ## body ----
 body <- dashboardBody(
 
-  ### style ----
+  ### style
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "mytheme.css")
   ),
@@ -94,7 +94,7 @@ body <- dashboardBody(
     ".shiny-output-error:before { visibility: hidden; }"
   ),
 
-  ### Last Update ----
+  ### Last Update
   shiny.info::version(paste("Last Update:", ymd(Sys.Date())), position = "bottom right"),
 
   tabItems(
@@ -112,12 +112,12 @@ body <- dashboardBody(
         valueBoxOutput("db_serious") %>% withLoader(type = "html", loader = "loader7")
       ),
       fluidPage(
-        ### map ----
+        ### map
         column(8, leafletOutput("dashboard_map")),
         column(4, plotOutput("dashboard_waffle"))
       ),
       fluidPage(
-        ### summary table ----
+        ### summary table
         column(12, dataTableOutput("data_sickbed"))
       )
     ),
@@ -159,7 +159,7 @@ server <- function(input, output, session) {
   ### import
   data <- reactive({
     req(input$selFile$datapath)
-    
+
     if (grepl(".zip", input$selFile$datapath) == TRUE) {
       dir.create(tmp <- tempfile())
       zip::unzip(input$selFile$datapath, exdir = tmp)
@@ -171,7 +171,7 @@ server <- function(input, output, session) {
       data <- readxl::read_excel(input$selFile$datapath)
     }
   })
-  
+
   hospital <- reactive({
     hospital <- readxl::read_excel("hospital.xlsx")
     return(hospital)
@@ -179,11 +179,11 @@ server <- function(input, output, session) {
 
   sickbed <- reactive({
     # sickbed <- readxl::read_excel("data-example/2020-02-23.xlsx")
-    sickbed <- data() 
+    sickbed <- data()
     sickbed <- sickbed %>%
       filter(hospital %in% input$checkbox) %>%
       mutate(date = ymd(date)) %>%
-      mutate(중증도변화 = factor(중증도변화, level = c("경증", "중증도", "중증", "최중증"))) %>%
+      mutate(중증도변화 = factor(중증도변화)) %>%
       mutate(bed = ifelse(is.na(이름) == TRUE, 0, 1))
     return(sickbed)
   })
@@ -204,7 +204,7 @@ server <- function(input, output, session) {
       left_join(summary())
     return(join)
   })
-  
+
   ## renderUI ----
   output$ui_checkbox <- renderUI({
     checkboxGroupInput(
@@ -215,7 +215,7 @@ server <- function(input, output, session) {
     )
   })
 
-  ## value box ----
+  ## 대시보드 ----
   output$db_bed <- renderValueBox({
     value <- summary()$전체 %>% sum()
 
@@ -286,11 +286,10 @@ server <- function(input, output, session) {
     )
   })
 
-
-  ## map ----
   output$dashboard_map <- renderLeaflet({
     leaflet() %>%
       addTiles() %>%
+      # addProviderTiles("CartoDB.VoyagerLabelsUnder") %>%
       addMinicharts(
         join()$long, join()$lat,
         type = "pie",
@@ -299,7 +298,6 @@ server <- function(input, output, session) {
       )
   })
 
-  ## waffle ----
   output$dashboard_waffle <- renderPlot({
     sickbed() %>%
       group_by(bed) %>%
@@ -310,8 +308,8 @@ server <- function(input, output, session) {
       geom_waffle(n_rows = 8, color = "white", flip = TRUE) +
       scale_fill_manual(
         name = NULL,
-        values = c("#fe346e", "#5b8c5a"),
-        labels = c("In Use", "Empty")
+        values = c("#5b8c5a", "#fe346e"),
+        labels = c("Empty", "In Use")
       ) +
       coord_equal() +
       theme_enhance_waffle() +
@@ -319,7 +317,6 @@ server <- function(input, output, session) {
       theme(legend.position = "bottom")
   })
 
-  ## data ----
   output$data_sickbed <- renderDataTable({
     summary() %>%
       arrange(desc(사용율)) %>%
@@ -354,25 +351,25 @@ server <- function(input, output, session) {
       )
     plotly::ggplotly(p)
   })
-  
+
   output$distribution_etc <- renderPlotly({
     p <- sickbed() %>%
-        group_by(특이사항) %>%
-        summarise(n = n()) %>%
-        filter(is.na(특이사항) == FALSE) %>%
-        ggplot(aes(reorder(특이사항, n), n)) +
-        geom_col(aes(fill = 특이사항)) +
-        theme(legend.position = "top") +
-        scale_fill_brewer(palette = 7) +
-        ggthemes::theme_few() +
-        labs(
-          title = "특이사항",
-          x = "특이사항", 
-          y = "Count"
-        )
+      group_by(특이사항) %>%
+      summarise(n = n()) %>%
+      filter(is.na(특이사항) == FALSE) %>%
+      ggplot(aes(reorder(특이사항, n), n)) +
+      geom_col(aes(fill = 특이사항)) +
+      theme(legend.position = "top") +
+      scale_fill_brewer(palette = 7) +
+      ggthemes::theme_few() +
+      labs(
+        title = "특이사항",
+        x = "특이사항",
+        y = "Count"
+      )
     ggplotly(p)
   })
-  
+
   ## data raw ----
   output$data_raw <- renderDataTable({
     sickbed() %>%
@@ -387,15 +384,13 @@ server <- function(input, output, session) {
         )
       ) %>%
       formatStyle("나이",
-                  color = "#f4dada",
-                  background = styleColorBar(c(0, 100), "#ce0f3d"),
-                  backgroundSize = "98% 88%",
-                  backgroundRepeat = "no-repeat",
-                  backgroundPosition = "center"
+        color = "#f4dada",
+        background = styleColorBar(c(0, 100), "#ce0f3d"),
+        backgroundSize = "98% 88%",
+        backgroundRepeat = "no-repeat",
+        backgroundPosition = "center"
       )
   })
-  
-  
 }
 
 # run app  --------------
