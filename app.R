@@ -373,7 +373,7 @@ server <- function(input, output, session) {
   ## data raw ----
   output$data_raw <- renderDataTable({
     sickbed() %>%
-      arrange(desc(나이)) %>%
+      arrange(desc(중증도변화)) %>%
       datatable(
         extensions = "Buttons",
         options = list(
@@ -389,6 +389,13 @@ server <- function(input, output, session) {
         backgroundSize = "98% 88%",
         backgroundRepeat = "no-repeat",
         backgroundPosition = "center"
+      ) %>%
+      formatStyle("중증도변화",
+                  color = "white",
+                  backgroundColor = styleEqual(c("경증", "중등도", "중증", "최중증"), c("#ffb2a7", "#e6739f", "#cc0e74", "#790c5a")),
+                  backgroundSize = "98% 88%",
+                  backgroundRepeat = "no-repeat",
+                  backgroundPosition = "center"
       )
   })
 }
