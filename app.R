@@ -107,8 +107,8 @@ body <- dashboardBody(
         valueBoxOutput("db_empty") %>% withLoader(type = "html", loader = "loader7")
       ),
       fluidPage(
-        valueBoxOutput("db_definite") %>% withLoader(type = "html", loader = "loader7"),
         valueBoxOutput("db_percent") %>% withLoader(type = "html", loader = "loader7"),
+        valueBoxOutput("db_definite") %>% withLoader(type = "html", loader = "loader7"),
         valueBoxOutput("db_serious") %>% withLoader(type = "html", loader = "loader7")
       ),
       fluidPage(
@@ -222,7 +222,7 @@ server <- function(input, output, session) {
     valueBox(
       paste0(value),
       "전체 병상수",
-      color = "green",
+      color = "aqua",
       icon = icon("bed")
     )
   })
@@ -244,7 +244,7 @@ server <- function(input, output, session) {
     valueBox(
       paste0(value),
       "여유",
-      color = "aqua",
+      color = "green",
       icon = icon("smile")
     )
   })
@@ -257,7 +257,7 @@ server <- function(input, output, session) {
     valueBox(
       paste0(value),
       "확진자수",
-      color = "green",
+      color = "light-blue",
       icon = icon("tired")
     )
   })
@@ -268,20 +268,20 @@ server <- function(input, output, session) {
     valueBox(
       paste0(value, "%"),
       "사용율",
-      color = "red",
+      color = "yellow",
       icon = icon("procedures")
     )
   })
 
   output$db_serious <- renderValueBox({
     value <- sickbed() %>%
-      filter(중증도변화 == "중증") %>%
+      filter(중증도변화 %in% c("중증", "최중증")) %>%
       nrow()
 
     valueBox(
       paste0(value),
-      "중증환자수",
-      color = "aqua",
+      "중증+최중증",
+      color = "purple",
       icon = icon("dizzy")
     )
   })
@@ -337,7 +337,8 @@ server <- function(input, output, session) {
         backgroundPosition = "center"
       )
   })
-
+  
+  #
   ## 환자분포 ----
   output$distribution_serious_age <- renderPlotly({
     p <- sickbed() %>%
