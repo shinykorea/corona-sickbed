@@ -25,6 +25,8 @@ library(zip)
 ## Make login DB
 library(shinymanager)
 
+## font 
+
 # credentials <- data.frame(
 #  user = c("admin", "user1"),
 #  password = c("admin", "user1"),
@@ -126,8 +128,17 @@ body <- dashboardBody(
     tabItem(
       tabName = "distribution",
       fluidPage(
-        column(6, plotlyOutput("distribution_serious_age")),
+        column(6, plotlyOutput("distribution_serious_age") %>% withLoader(type = "html", loader = "loader7")),
         column(6, plotlyOutput("distribution_etc"))
+      )
+    ),
+    
+    ## 병원별 ----
+    tabItem(
+      tabName = "by_hospital",
+      fluidPage(
+        tags$style(type = "text/css", "#by_hospital_waffle {height: calc(100vh - 80px) !important;}"),
+        plotOutput("by_hospital_waffle") %>% withLoader(type = "html", loader = "loader7")
       )
     ),
 
@@ -371,6 +382,30 @@ server <- function(input, output, session) {
     ggplotly(p)
   })
 
+  ## 병원별 ----
+  output$by_hospital_waffle <- renderPlot({
+    sickbed() %>%
+      group_by(hospital, bed) %>%
+      summarise(n = n()) %>%
+      mutate(bed = ifelse(bed == 1, "In Use", "Empty")) %>%
+      mutate(bed = factor(bed)) %>%
+      ggplot(aes(fill = bed, values = n)) +
+      geom_waffle(n_rows = 10, color = "white", flip = TRUE) +
+      facet_wrap(~hospital, ncol = 1, strip.position = "right") +
+      scale_fill_manual(
+        name = NULL,
+        values = c("#5b8c5a", "#fe346e"),
+        labels = c("Empty", "In Use")
+      ) +
+      coord_equal() +
+      theme_enhance_waffle() +
+      theme_void(base_family = "NanumGothic") +
+      theme(
+        legend.position = "bottom",
+        strip.text = element_text(size = 20)
+      )
+  })
+  
   ## data raw ----
   output$data_raw <- renderDataTable({
     sickbed() %>%
