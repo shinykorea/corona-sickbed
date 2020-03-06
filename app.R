@@ -25,6 +25,8 @@ library(zip)
 ## Make login DB
 library(shinymanager)
 
+## font 
+
 # credentials <- data.frame(
 #  user = c("admin", "user1"),
 #  password = c("admin", "user1"),
@@ -43,11 +45,11 @@ header <- dashboardHeader(
 sidebar <- dashboardSidebar(
   width = 250,
   sidebarMenu(
-    fileInput(
-      "selFile",
-      tags$a(href = "https://github.com/shinykorea/corona-sickbed/blob/master/data-example/2020-02-23.xlsx?raw=true", tags$div(HTML(paste("병실현황을", tags$span(style = "color:black", "업로드"), "해주세요", sep = "")))),
-      buttonLabel = "파일선택"
-    ),
+    # fileInput(
+    #   "selFile",
+    #   tags$a(href = "https://github.com/shinykorea/corona-sickbed/blob/master/data-example/2020-02-23.xlsx?raw=true", tags$div(HTML(paste("병실현황을", tags$span(style = "color:black", "업로드"), "해주세요", sep = "")))),
+    #   buttonLabel = "파일선택"
+    # ),
 
     menuItem("대시보드", tabName = "dashboard", icon = icon("dashboard")),
 
@@ -65,18 +67,19 @@ sidebar <- dashboardSidebar(
       icon = icon("procedures")
     ),
 
-    menuItem("환자유입", tabName = "enter_patient", icon = icon("ambulance")),
-
-    menuItem(
-      "시뮬레이션",
-      tabName = "simulation_sickbed",
-      icon = icon("calculator")
-    ),
+    # menuItem("환자유입", tabName = "enter_patient", icon = icon("ambulance")),
+    # 
+    # menuItem(
+    #   "시뮬레이션",
+    #   tabName = "simulation_sickbed",
+    #   icon = icon("calculator")
+    # ),
 
     menuItem("데이터", tabName = "data", icon = icon("database")),
-    menuItem("About", tabName = "about", icon = icon("star")),
+    # menuItem("About", tabName = "about", icon = icon("star")),
 
-    uiOutput("ui_checkbox")
+    uiOutput("ui_checkbox"),
+    checkboxInput('bar', 'All/None', TRUE)
   )
 )
 
@@ -107,8 +110,8 @@ body <- dashboardBody(
         valueBoxOutput("db_empty") %>% withLoader(type = "html", loader = "loader7")
       ),
       fluidPage(
-        valueBoxOutput("db_definite") %>% withLoader(type = "html", loader = "loader7"),
         valueBoxOutput("db_percent") %>% withLoader(type = "html", loader = "loader7"),
+        valueBoxOutput("db_definite") %>% withLoader(type = "html", loader = "loader7"),
         valueBoxOutput("db_serious") %>% withLoader(type = "html", loader = "loader7")
       ),
       fluidPage(
@@ -126,8 +129,17 @@ body <- dashboardBody(
     tabItem(
       tabName = "distribution",
       fluidPage(
-        column(6, plotlyOutput("distribution_serious_age")),
+        column(6, plotlyOutput("distribution_serious_age") %>% withLoader(type = "html", loader = "loader7")),
         column(6, plotlyOutput("distribution_etc"))
+      )
+    ),
+    
+    ## 병원별 ----
+    tabItem(
+      tabName = "by_hospital",
+      fluidPage(
+        tags$style(type = "text/css", "#by_hospital_waffle {height: calc(100vh - 80px) !important;}"),
+        plotOutput("by_hospital_waffle") %>% withLoader(type = "html", loader = "loader7")
       )
     ),
 
@@ -157,20 +169,25 @@ server <- function(input, output, session) {
 
   ## data ----
   ### import
+  
   data <- reactive({
-    req(input$selFile$datapath)
-
-    if (grepl(".zip", input$selFile$datapath) == TRUE) {
-      dir.create(tmp <- tempfile())
-      zip::unzip(input$selFile$datapath, exdir = tmp)
-      nm <- list.files(file.path(tmp))
-      nm <- subset(nm, grepl(".xls", nm) == TRUE | grepl(".xlsx", nm) == TRUE | grepl(".csv", nm) == TRUE | grepl(".txt", nm) == TRUE)
-      data <- do.call(rbind, lapply(nm, FUN = function(x) readxl::read_excel(file.path(tmp, x))))
-      data
-    } else {
-      data <- readxl::read_excel(input$selFile$datapath)
-    }
+    data <- readxl::read_excel("data-example/2020-02-23.xlsx")
   })
+  
+  # data <- reactive({
+  #   req(input$selFile$datapath)
+  # 
+  #   if (grepl(".zip", input$selFile$datapath) == TRUE) {
+  #     dir.create(tmp <- tempfile())
+  #     zip::unzip(input$selFile$datapath, exdir = tmp)
+  #     nm <- list.files(file.path(tmp))
+  #     nm <- subset(nm, grepl(".xls", nm) == TRUE | grepl(".xlsx", nm) == TRUE | grepl(".csv", nm) == TRUE | grepl(".txt", nm) == TRUE)
+  #     data <- do.call(rbind, lapply(nm, FUN = function(x) readxl::read_excel(file.path(tmp, x))))
+  #     data
+  #   } else {
+  #     data <- readxl::read_excel(input$selFile$datapath)
+  #   }
+  # })
 
   hospital <- reactive({
     hospital <- readxl::read_excel("hospital.xlsx")
@@ -214,6 +231,13 @@ server <- function(input, output, session) {
       selected = c(hospital()$hospital)
     )
   })
+  
+  observe({
+    updateCheckboxGroupInput(
+      session, 'checkbox', choices = c(hospital()$hospital),
+      selected = if (input$bar) c(hospital()$hospital)
+    )
+  })
 
   ## 대시보드 ----
   output$db_bed <- renderValueBox({
@@ -222,7 +246,7 @@ server <- function(input, output, session) {
     valueBox(
       paste0(value),
       "전체 병상수",
-      color = "green",
+      color = "aqua",
       icon = icon("bed")
     )
   })
@@ -244,7 +268,7 @@ server <- function(input, output, session) {
     valueBox(
       paste0(value),
       "여유",
-      color = "aqua",
+      color = "green",
       icon = icon("smile")
     )
   })
@@ -257,7 +281,7 @@ server <- function(input, output, session) {
     valueBox(
       paste0(value),
       "확진자수",
-      color = "green",
+      color = "light-blue",
       icon = icon("tired")
     )
   })
@@ -268,20 +292,20 @@ server <- function(input, output, session) {
     valueBox(
       paste0(value, "%"),
       "사용율",
-      color = "red",
+      color = "yellow",
       icon = icon("procedures")
     )
   })
 
   output$db_serious <- renderValueBox({
     value <- sickbed() %>%
-      filter(중증도변화 == "중증") %>%
+      filter(중증도변화 %in% c("중증", "최중증")) %>%
       nrow()
 
     valueBox(
       paste0(value),
-      "중증환자수",
-      color = "aqua",
+      "중증+최중증",
+      color = "purple",
       icon = icon("dizzy")
     )
   })
@@ -337,7 +361,8 @@ server <- function(input, output, session) {
         backgroundPosition = "center"
       )
   })
-
+  
+  #
   ## 환자분포 ----
   output$distribution_serious_age <- renderPlotly({
     p <- sickbed() %>%
@@ -370,10 +395,34 @@ server <- function(input, output, session) {
     ggplotly(p)
   })
 
+  ## 병원별 ----
+  output$by_hospital_waffle <- renderPlot({
+    sickbed() %>%
+      group_by(hospital, bed) %>%
+      summarise(n = n()) %>%
+      mutate(bed = ifelse(bed == 1, "In Use", "Empty")) %>%
+      mutate(bed = factor(bed)) %>%
+      ggplot(aes(fill = bed, values = n)) +
+      geom_waffle(n_rows = 10, color = "white", flip = TRUE) +
+      facet_wrap(~hospital, ncol = 1, strip.position = "right") +
+      scale_fill_manual(
+        name = NULL,
+        values = c("#5b8c5a", "#fe346e"),
+        labels = c("Empty", "In Use")
+      ) +
+      coord_equal() +
+      theme_enhance_waffle() +
+      theme_void(base_family = "NanumGothic") +
+      theme(
+        legend.position = "bottom",
+        strip.text = element_text(size = 20)
+      )
+  })
+  
   ## data raw ----
   output$data_raw <- renderDataTable({
     sickbed() %>%
-      arrange(desc(나이)) %>%
+      arrange(desc(중증도변화)) %>%
       datatable(
         extensions = "Buttons",
         options = list(
@@ -389,6 +438,13 @@ server <- function(input, output, session) {
         backgroundSize = "98% 88%",
         backgroundRepeat = "no-repeat",
         backgroundPosition = "center"
+      ) %>%
+      formatStyle("중증도변화",
+                  color = "white",
+                  backgroundColor = styleEqual(c("경증", "중등도", "중증", "최중증"), c("#ffb2a7", "#e6739f", "#cc0e74", "#790c5a")),
+                  backgroundSize = "98% 88%",
+                  backgroundRepeat = "no-repeat",
+                  backgroundPosition = "center"
       )
   })
 }
