@@ -45,11 +45,11 @@ header <- dashboardHeader(
 sidebar <- dashboardSidebar(
   width = 250,
   sidebarMenu(
-    fileInput(
-      "selFile",
-      tags$a(href = "https://github.com/shinykorea/corona-sickbed/blob/master/data-example/2020-02-23.xlsx?raw=true", tags$div(HTML(paste("병실현황을", tags$span(style = "color:black", "업로드"), "해주세요", sep = "")))),
-      buttonLabel = "파일선택"
-    ),
+    # fileInput(
+    #   "selFile",
+    #   tags$a(href = "https://github.com/shinykorea/corona-sickbed/blob/master/data-example/2020-02-23.xlsx?raw=true", tags$div(HTML(paste("병실현황을", tags$span(style = "color:black", "업로드"), "해주세요", sep = "")))),
+    #   buttonLabel = "파일선택"
+    # ),
 
     menuItem("대시보드", tabName = "dashboard", icon = icon("dashboard")),
 
@@ -67,18 +67,19 @@ sidebar <- dashboardSidebar(
       icon = icon("procedures")
     ),
 
-    menuItem("환자유입", tabName = "enter_patient", icon = icon("ambulance")),
-
-    menuItem(
-      "시뮬레이션",
-      tabName = "simulation_sickbed",
-      icon = icon("calculator")
-    ),
+    # menuItem("환자유입", tabName = "enter_patient", icon = icon("ambulance")),
+    # 
+    # menuItem(
+    #   "시뮬레이션",
+    #   tabName = "simulation_sickbed",
+    #   icon = icon("calculator")
+    # ),
 
     menuItem("데이터", tabName = "data", icon = icon("database")),
-    menuItem("About", tabName = "about", icon = icon("star")),
+    # menuItem("About", tabName = "about", icon = icon("star")),
 
-    uiOutput("ui_checkbox")
+    uiOutput("ui_checkbox"),
+    checkboxInput('bar', 'All/None', TRUE)
   )
 )
 
@@ -168,20 +169,25 @@ server <- function(input, output, session) {
 
   ## data ----
   ### import
+  
   data <- reactive({
-    req(input$selFile$datapath)
-
-    if (grepl(".zip", input$selFile$datapath) == TRUE) {
-      dir.create(tmp <- tempfile())
-      zip::unzip(input$selFile$datapath, exdir = tmp)
-      nm <- list.files(file.path(tmp))
-      nm <- subset(nm, grepl(".xls", nm) == TRUE | grepl(".xlsx", nm) == TRUE | grepl(".csv", nm) == TRUE | grepl(".txt", nm) == TRUE)
-      data <- do.call(rbind, lapply(nm, FUN = function(x) readxl::read_excel(file.path(tmp, x))))
-      data
-    } else {
-      data <- readxl::read_excel(input$selFile$datapath)
-    }
+    data <- readxl::read_excel("data-example/2020-02-23.xlsx")
   })
+  
+  # data <- reactive({
+  #   req(input$selFile$datapath)
+  # 
+  #   if (grepl(".zip", input$selFile$datapath) == TRUE) {
+  #     dir.create(tmp <- tempfile())
+  #     zip::unzip(input$selFile$datapath, exdir = tmp)
+  #     nm <- list.files(file.path(tmp))
+  #     nm <- subset(nm, grepl(".xls", nm) == TRUE | grepl(".xlsx", nm) == TRUE | grepl(".csv", nm) == TRUE | grepl(".txt", nm) == TRUE)
+  #     data <- do.call(rbind, lapply(nm, FUN = function(x) readxl::read_excel(file.path(tmp, x))))
+  #     data
+  #   } else {
+  #     data <- readxl::read_excel(input$selFile$datapath)
+  #   }
+  # })
 
   hospital <- reactive({
     hospital <- readxl::read_excel("hospital.xlsx")
@@ -223,6 +229,13 @@ server <- function(input, output, session) {
       "병원선택",
       c(hospital()$hospital),
       selected = c(hospital()$hospital)
+    )
+  })
+  
+  observe({
+    updateCheckboxGroupInput(
+      session, 'checkbox', choices = c(hospital()$hospital),
+      selected = if (input$bar) c(hospital()$hospital)
     )
   })
 
