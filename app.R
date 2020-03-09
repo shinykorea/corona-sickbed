@@ -4,7 +4,7 @@ library(tidyverse)
 library(shiny)
 library(shinydashboard)
 library(shinycustomloader)
-library(shiny.info)
+library(shiny.info) # remotes::install_github('appsilon/shiny.info')
 
 library(plotly)
 library(leaflet)
@@ -12,7 +12,7 @@ library(leaflet.minicharts)
 library(highcharter)
 library(ggthemes)
 library(ggrepel)
-library(waffle) # devtools::install_github("hrbrmstr/waffle")
+library(waffle) # remotes::install_github("hrbrmstr/waffle")
 
 library(DT)
 library(formattable)
@@ -94,7 +94,8 @@ body <- dashboardBody(
   tags$style(
     type = "text/css",
     ".shiny-output-error { visibility: hidden; }",
-    ".shiny-output-error:before { visibility: hidden; }"
+    ".shiny-output-error:before { visibility: hidden; }",
+    'th, td {text-align:center !important;}'
   ),
 
   ### Last Update
@@ -314,11 +315,12 @@ server <- function(input, output, session) {
     leaflet() %>%
       addTiles() %>%
       # addProviderTiles("CartoDB.VoyagerLabelsUnder") %>%
+      setView(lng = 127.06, lat = 37.36, zoom = 9) %>%
       addMinicharts(
         join()$long, join()$lat,
         type = "pie",
         chartdata = join()[, c("사용", "여유")],
-        colorPalette = c("#fe346e", "#cccccc")
+        colorPalette = c("#fe346e", "#5b8c5a")
       )
   })
 
@@ -341,25 +343,60 @@ server <- function(input, output, session) {
       theme(legend.position = "bottom")
   })
 
+  styleDT = function(idx){
+    yellow = '#f9ca24' # yellow
+    red = '#e84118' # red
+    green = '#44bd32' # green
+    
+    buildBG = function(v, color){
+      paste0('background : linear-gradient(90deg, transparent ',v, color, v, ') center center / 98% 88% no-repeat;')
+    }
+    JS(paste0(
+      "function(row, data, index){ 
+      if(data[", idx, "] > 0){$(row).find('td:eq(", idx, ")').css({'background-color' : '",green,"', 'font-size' : '1.8em'});}
+      if(data[", idx, "] > 33.3){$(row).find('td:eq(", idx, ")').css({'background-color' : '",yellow,"', 'font-size' : '1.5em'});}
+      if(data[", idx, "] > 66.6){$(row).find('td:eq(", idx, ")').css({'background-color' : '",red,"', 'font-size' : '1em'});}
+      }"
+    ))
+  }
+  
+  TemporaryLink = data.frame(stringsAsFactors = FALSE,
+    hospital = c('성남','수원', '이천', '분당','안성','수도','명지'), 
+    전화번호 = c('031-738-7000', 
+             '031-8880-114', 
+             '031-630-4200', 
+             '1588-3369',
+             '031-8046-5000',
+             '1688-9151',
+             '031-810-5114'
+             )
+  )
+  
   output$data_sickbed <- renderDataTable({
     summary() %>%
+      right_join(TemporaryLink) %>%
       arrange(desc(사용율)) %>%
       datatable(
         extensions = "Buttons",
+        rownames = FALSE, 
+        selection = 'none',
         options = list(
           pageLength = 10,
           lengthMenu = c(10, 50, 100, 200, 300),
           dom = "Blfrtip",
-          buttons = c("copy", "excel", "print")
+          buttons = c("copy", "excel", "print"),
+          autoWidth = TRUE, 
+          rowCallback = styleDT(4),
+          order = list(list(3, "desc"))
         )
       ) %>%
       formatStyle("사용율",
-        color = "#f4dada",
-        background = styleColorBar(c(0, 100), "#ce0f3d"),
+        color = "#ffffff", # font color,
         backgroundSize = "98% 88%",
         backgroundRepeat = "no-repeat",
         backgroundPosition = "center"
-      )
+      ) %>%
+      formatStyle(columns = c(1:4,6), fontSize = '1.5em')
   })
   
   #
