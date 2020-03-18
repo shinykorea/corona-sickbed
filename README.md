@@ -1,6 +1,5 @@
-# G-CoMS 병상운용현황
+# G-CoMS 병상운용현황  
 Gyeonggi Corona Management System
-=================================
 
 ## 목표 
 
