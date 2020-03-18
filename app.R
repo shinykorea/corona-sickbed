@@ -4,82 +4,66 @@ library(tidyverse)
 library(shiny)
 library(shinydashboard)
 library(shinycustomloader)
-library(shiny.info) # remotes::install_github('appsilon/shiny.info')
+library(shiny.info)
+library(shinyjs)
 
-library(plotly)
 library(leaflet)
 library(leaflet.minicharts)
 library(highcharter)
-library(ggthemes)
-library(ggrepel)
-library(waffle) # remotes::install_github("hrbrmstr/waffle")
 
 library(DT)
-library(formattable)
 library(knitr)
 
 library(lubridate)
 library(purrr)
-library(zip)
 
 ## Make login DB
 library(shinymanager)
 
-## font 
+### import from dropbox ----
+library(rdrop2)
+token <- readRDS("token.rds")
+# drop_acc(dtoken = token)
 
-# credentials <- data.frame(
-#  user = c("admin", "user1"),
-#  password = c("admin", "user1"),
-#  admin = c(T, F),
-#  stringsAsFactors = FALSE)
+file <- drop_dir("corona19", dtoken = token) %>%
+  select(name, client_modified) %>%
+  arrange(desc(client_modified))
 
-# create_db(credentials_data = credentials, sqlite_path = "database.sqlite")
+file_name <- file %>%
+  pull(name) %>%
+  .[1]
+
+file_date <- file %>%
+  pull(client_modified) %>%
+  .[1] %>%
+  lubridate::ymd_hms()
+
+paste0("corona19/", file_name) %>%
+  drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
 
 ## header ----
 header <- dashboardHeader(
-  title = "COVID-SickBed",
-  titleWidth = 270
+  title = "G-CoMS 병상운용현황",
+  titleWidth = 350,
+  tags$li(a(
+    href = "https://www.gg.go.kr/",
+    img(
+      src = "logo2.png",
+      title = "경기도청홈페이지", height = "30px"
+    ),
+    style = "padding-top:10px; padding-bottom:10px;"
+  ),
+  class = "dropdown"
+  )
 )
 
 ## sidebar ----
 sidebar <- dashboardSidebar(
-  width = 250,
+  width = 350,
   sidebarMenu(
-    # fileInput(
-    #   "selFile",
-    #   tags$a(href = "https://github.com/shinykorea/corona-sickbed/blob/master/data-example/2020-02-23.xlsx?raw=true", tags$div(HTML(paste("병실현황을", tags$span(style = "color:black", "업로드"), "해주세요", sep = "")))),
-    #   buttonLabel = "파일선택"
-    # ),
-
     menuItem("대시보드", tabName = "dashboard", icon = icon("dashboard")),
-
-    menuItem("환자분포", tabName = "distribution", icon = icon("chart-pie")),
-
-    menuItem(
-      "병원별",
-      tabName = "by_hospital",
-      icon = icon("hospital")
-    ),
-
-    menuItem(
-      "환자별",
-      tabName = "by_patient",
-      icon = icon("procedures")
-    ),
-
-    # menuItem("환자유입", tabName = "enter_patient", icon = icon("ambulance")),
-    # 
-    # menuItem(
-    #   "시뮬레이션",
-    #   tabName = "simulation_sickbed",
-    #   icon = icon("calculator")
-    # ),
-
     menuItem("데이터", tabName = "data", icon = icon("database")),
-    # menuItem("About", tabName = "about", icon = icon("star")),
-
-    uiOutput("ui_checkbox"),
-    checkboxInput('bar', 'All/None', TRUE)
+    menuItem("Map", tabName = "map", icon = icon("map-marked-alt"))
   )
 )
 
@@ -94,394 +78,406 @@ body <- dashboardBody(
   tags$style(
     type = "text/css",
     ".shiny-output-error { visibility: hidden; }",
-    ".shiny-output-error:before { visibility: hidden; }",
-    'th, td {text-align:center !important;}'
+    ".shiny-output-error:before { visibility: hidden; }"
   ),
 
+  useShinyjs(),
+  tags$head(tags$style(type = "text/css", "table.dataTable tr.selected td, table.dataTable td.selected {background-color: #d1c4e9 !important;}")),
+  tags$head(tags$style(type = "text/css", "th, td {text-align:center !important;}")),
+  tags$head(tags$style(type = "text/css", "html, body {height:100% !important;}")),
+  tags$head(includeCSS("www/includefont.css")),
+
+  ## Change Font Here ---------------------------------------------------
+  ## Possible Options :
+  ## GGTitle_B, GGTitle_L, GGTitle_M
+  ## GGBatang_B, GGBatang_R
+  tags$head(tags$style(type = "text/css", "*{font-family:GGTitle_L}")),
+  tags$head(tags$style(type = "text/css", ".indicator {height:0.3em;}")),
+  tags$head(tags$style(type = "text/css", "table {table-layout:fixed; width:100%;}")),
+  tags$head(tags$style(type = "text/css", ".btn.btn-default.action-button.buttons-fab.shiny-bound-input { background-color: #b388ff;}")),
+  tags$head(tags$style(type = "text/css", ".tabs .tab a, .tabs .tab a:hover, .tabs .tab a.active {font-size:1.5em; color : #311b92;}")),
+  tags$head(tags$style(type = "text/css", ".skin-blue .main-header .logo .logo:hover {font-size:1.5em; color : #311b92;}")),
+  tags$head(tags$style(HTML('
+      .main-header .logo {
+        font-family: "GGTitle_L", serif;
+        font-weight: bold;
+        font-size: 20px;
+      }
+    '))),
+
+
   ### Last Update
-  shiny.info::version(paste("Last Update:", ymd(Sys.Date())), position = "bottom right"),
+  shiny.info::version(paste("Last Update:", file_date), position = "bottom right"),
 
   tabItems(
     ### Dashboard ----
     tabItem(
       tabName = "dashboard",
       fluidPage(
-        valueBoxOutput("db_bed") %>% withLoader(type = "html", loader = "loader7"),
-        valueBoxOutput("db_use") %>% withLoader(type = "html", loader = "loader7"),
-        valueBoxOutput("db_empty") %>% withLoader(type = "html", loader = "loader7")
+        column(width = 4, highchartOutput(outputId = "pie1")),
+        column(width = 4, highchartOutput(outputId = "pie2")),
+        column(width = 4, highchartOutput(outputId = "pie4"))
       ),
       fluidPage(
-        valueBoxOutput("db_percent") %>% withLoader(type = "html", loader = "loader7"),
-        valueBoxOutput("db_definite") %>% withLoader(type = "html", loader = "loader7"),
-        valueBoxOutput("db_serious") %>% withLoader(type = "html", loader = "loader7")
+        column(6, highchartOutput("병원별") %>% withLoader(type = "html", loader = "loader7")),
+        column(6, highchartOutput("중환자실") %>% withLoader(type = "html", loader = "loader7"))
       ),
       fluidPage(
-        ### map
-        column(8, leafletOutput("dashboard_map")),
-        column(4, plotOutput("dashboard_waffle"))
-      ),
-      fluidPage(
-        ### summary table
-        column(12, dataTableOutput("data_sickbed"))
-      )
-    ),
-
-    ## 환자분포 ----
-    tabItem(
-      tabName = "distribution",
-      fluidPage(
-        column(6, plotlyOutput("distribution_serious_age") %>% withLoader(type = "html", loader = "loader7")),
-        column(6, plotlyOutput("distribution_etc"))
-      )
-    ),
-    
-    ## 병원별 ----
-    tabItem(
-      tabName = "by_hospital",
-      fluidPage(
-        tags$style(type = "text/css", "#by_hospital_waffle {height: calc(100vh - 80px) !important;}"),
-        plotOutput("by_hospital_waffle") %>% withLoader(type = "html", loader = "loader7")
+        column(12, leafletOutput("map"))
       )
     ),
 
     ## raw data ----
     tabItem(
       tabName = "data",
+      checkboxGroupInput(
+        "hospital1",
+        "분류1",
+        choices = c("중환자실", "음압", "비음압"),
+        selected = c("중환자실", "음압", "비음압"),
+        inline = TRUE
+      ),
       fluidPage(
         dataTableOutput("data_raw")
       )
+    ),
+
+    tabItem(
+      tabName = "map",
+      tags$style(type = "text/css", "#map2 {height: calc(100vh - 80px) !important;}"),
+      leafletOutput("map2")
     )
   )
 )
 
 # ui ----
 ui <- dashboardPage(header, sidebar, body)
-# %>% secure_app(enable_admin = T) # login 기능은 개발과정에서는 생략하고 실제 애플리케이션 배포시에만 적용
-
 
 # server ----
 
 server <- function(input, output, session) {
 
-  ## Apply login DB ----
-  res_auth <- secure_server(
-    check_credentials = check_credentials("database.sqlite")
-  )
-
   ## data ----
-  ### import
-  
   data <- reactive({
-    data <- readxl::read_excel("data-example/2020-02-23.xlsx")
+    data <- readxl::read_excel(paste0("data/", file_name))
+    data <- data %>% select(1:6)
+    colnames(data) <- c("병원명", "분류1", "분류2", "총병상", "사용병상", "가용병상")
+    return(data)
   })
   
-  # data <- reactive({
-  #   req(input$selFile$datapath)
-  # 
-  #   if (grepl(".zip", input$selFile$datapath) == TRUE) {
-  #     dir.create(tmp <- tempfile())
-  #     zip::unzip(input$selFile$datapath, exdir = tmp)
-  #     nm <- list.files(file.path(tmp))
-  #     nm <- subset(nm, grepl(".xls", nm) == TRUE | grepl(".xlsx", nm) == TRUE | grepl(".csv", nm) == TRUE | grepl(".txt", nm) == TRUE)
-  #     data <- do.call(rbind, lapply(nm, FUN = function(x) readxl::read_excel(file.path(tmp, x))))
-  #     data
-  #   } else {
-  #     data <- readxl::read_excel(input$selFile$datapath)
-  #   }
-  # })
+  data2 <- reactive({
+    data <- readxl::read_excel(paste0("data/", file_name), sheet = 2)
+    data <- data %>% select(1:3)
+    colnames(data) <- c("센터명", "총객실", "사용객실")
+    return(data)
+  })
+  
 
   hospital <- reactive({
     hospital <- readxl::read_excel("hospital.xlsx")
     return(hospital)
   })
 
-  sickbed <- reactive({
-    # sickbed <- readxl::read_excel("data-example/2020-02-23.xlsx")
-    sickbed <- data()
-    sickbed <- sickbed %>%
-      filter(hospital %in% input$checkbox) %>%
-      mutate(date = ymd(date)) %>%
-      mutate(중증도변화 = factor(중증도변화)) %>%
-      mutate(bed = ifelse(is.na(이름) == TRUE, 0, 1))
-    return(sickbed)
-  })
-
-  summary <- reactive({
-    summary <- sickbed() %>%
-      group_by(hospital) %>%
-      summarise(전체 = n(), 사용 = sum(bed)) %>%
-      mutate(
-        여유 = 전체 - 사용,
-        사용율 = round(사용 / 전체 * 100, 1)
-      )
-    return(summary)
-  })
-
   join <- reactive({
+    join <- data() %>%
+      filter(분류1 == "합계")
+
     join <- hospital() %>%
-      left_join(summary())
+      left_join(join)
+
     return(join)
   })
 
-  ## renderUI ----
-  output$ui_checkbox <- renderUI({
-    checkboxGroupInput(
-      "checkbox",
-      "병원선택",
-      c(hospital()$hospital),
-      selected = c(hospital()$hospital)
-    )
+  ################### data preprocess 4 piechart #############################3
+  data_smmry <- reactive({
+    data() %>%
+      group_by(`분류1`) %>%
+      summarise(사용병상 = sum(사용병상), 가용병상 = sum(가용병상))
+  })
+
+  pie1_data <- reactive({
+    data_smmry() %>%
+      filter(`분류1` == "합계") %>%
+      gather(type, n, ends_with("병상")) %>%
+      mutate(sum_bed = sum(n))
+  })
+
+  pie1_2_data <- reactive({
+    data_smmry() %>%
+      filter(`분류1` != "합계") %>%
+      gather(type, n, ends_with("병상"))
+  })
+
+  pie2_data <- reactive({
+    data_smmry() %>%
+      filter(`분류1` == "중환자실") %>%
+      gather(type, n, ends_with("병상")) %>%
+      mutate(sum_bed = sum(n))
+  })
+
+  pie3_data <- reactive({
+    data_smmry() %>%
+      filter(`분류1` == "음압") %>%
+      gather(type, n, ends_with("병상")) %>%
+      mutate(sum_bed = sum(n))
+  })
+
+  pie4_data <- reactive({
+    data2() %>% 
+      mutate(가용객실 = 총객실 - 사용객실) %>% 
+      summarise(
+        총객실 = sum(총객실), 
+        사용객실 = sum(사용객실), 
+        가용객실 = sum(가용객실)
+      ) %>%  
+      mutate(가용률 = round(가용객실/총객실 * 100, 1))
+  })
+
+  ## dashboard ----
+  #### pie 1
+  pie1 <-   reactive({
+    highchart() %>% hc_title(text = "<b>전체 병상 가용률</b>") %>% 
+      hc_add_series(type = "pie", size = "100%", innerSize = "50%",
+                    data = list(
+                      list(y = pie1_data() %>% filter(type == "사용병상") %>% select(n) %>% unlist() %>% as.vector(), 
+                           z = pie1_data() %>% filter(type == "사용병상") %>% select(sum_bed) %>% unlist() %>% as.vector(),
+                           name = "사용병상", 
+                           color = c("#e5dfdf"),
+                           drilldown = "사용병상",
+                           dataLabels = list(useHTML = TRUE, format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>", distance = -40, style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none"))
+                      ),
+                      list(y = pie1_data() %>% filter(type == "가용병상")%>% select(n) %>% unlist() %>% as.vector(), 
+                           z = pie1_data() %>% filter(type == "가용병상") %>% select(sum_bed) %>% unlist() %>% as.vector(),
+                           name = "가용병상", 
+                           color = c("#4d80e4"),
+                           drilldown = "가용병상",
+                           dataLabels = list(useHTML = TRUE, format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>", distance = -40, style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none"))
+                      )
+                    )) %>%
+      hc_tooltip(headerFormat = "", pointFormat = "{point.name}: {point.y}") %>%
+      hc_add_series(pie1_data()%>% filter(type == "가용병상"), type = "pie", hcaes(x = n, y = sum_bed, z = round(n/sum_bed * 100,1)), innerSize = "100%", size = "100%",
+                    dataLabels = list(format = "<span style='font-size:30px'>{point.z}%</span>", useHTML = T, style = list(textAlign = "center", fontSize = "1.2em * 2vw", color = "black"), align = "center", distance = -170), showInLegend=F,
+                    enableMouseTracking = FALSE) %>% 
+      hc_colors(c("#381460", "#b21f66", "#fe346e"))
+    
   })
   
-  observe({
-    updateCheckboxGroupInput(
-      session, 'checkbox', choices = c(hospital()$hospital),
-      selected = if (input$bar) c(hospital()$hospital)
-    )
+  pie1_drill_1 <- reactive({
+    pie1_2_data() %>% filter(type == "사용병상") %>% select(`분류1`, n)
+  })
+  
+  pie1_drill_2 <- reactive({
+    pie1_2_data() %>% filter(type == "가용병상") %>% select(`분류1`, n)
+  })
+  
+  
+  ## renderUI ----
+  output$pie1 <- renderHighchart({
+    pie1() %>% hc_drilldown(series = list(
+      list(id = "사용병상", type = "pie", data = list_parse2(pie1_drill_1())),
+      list(id = "가용병상", type = "pie", data = list_parse2(pie1_drill_2()))
+    ))
+  })
+  
+  ### pie2
+  output$pie2 <- renderHighchart({
+    highchart() %>% hc_title(text = "<b>중환자실 가용률</b>") %>% 
+      hc_plotOptions(pie = list(center = c("50%", "50%"), dataLabels = list(useHTML = T, align = "center"))) %>%
+      hc_add_series(type = "pie", size = "100%", innerSize = "50%",
+                    data = list(
+                      list(y = pie2_data() %>% filter(type == "사용병상") %>% select(n) %>% unlist() %>% as.vector(), 
+                           z = pie2_data() %>% filter(type == "사용병상") %>% select(sum_bed) %>% unlist() %>% as.vector(),
+                           name = "사용병상", 
+                           color = "#e5dfdf",
+                           dataLabels = list(useHTML = TRUE, format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>", distance = -40, style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none"))
+                      ),
+                      list(y = pie2_data() %>% filter(type == "가용병상")%>% select(n) %>% unlist() %>% as.vector(), 
+                           z = pie2_data() %>% filter(type == "가용병상") %>% select(sum_bed) %>% unlist() %>% as.vector(),
+                           color = "#db4455",
+                           name = "가용병상", 
+                           dataLabels = list(useHTML = TRUE, format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>", distance = -40, style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none"))
+                      )
+                    )) %>%
+      hc_tooltip(headerFormat = "", pointFormat = "{point.name}: {point.y}") %>%
+      hc_add_series(pie2_data() %>% filter(type == "가용병상"), type = "pie", hcaes(x = n, y = sum_bed, z = round(n/sum_bed * 100,1)), innerSize = "100%", size = "100%",
+                    dataLabels = list(format = "<span style='font-size:30px'>{point.z}%</span>", useHTML = T, style = list(textAlign = "center", fontSize = "1.2em * 2vw"), align = "center", distance = -170), showInLegend=F,
+                    enableMouseTracking = FALSE)
+    
+  })
+  
+  # output$pie3 <- renderHighchart({
+  #   highchart() %>% hc_title(text = "<b>음압 병상 가용률</b>") %>%
+  #     hc_plotOptions(pie = list(center = c("50%", "50%"), dataLabels = list(useHTML = T, align = "center"))) %>%
+  #     hc_add_series(type = "pie", size = "100%", innerSize = "50%",
+  #                   data = list(
+  #                     list(y = pie3_data() %>% filter(type == "사용병상") %>% select(n) %>% unlist() %>% as.vector(), 
+  #                          z = pie3_data() %>% filter(type == "사용병상") %>% select(sum_bed) %>% unlist() %>% as.vector(),
+  #                          name = "사용병상", 
+  #                          color = "#e5dfdf",
+  #                          dataLabels = list(useHTML = TRUE, format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>", distance = -40, style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none"))
+  #                     ),
+  #                     list(y = pie3_data() %>% filter(type == "가용병상")%>% select(n) %>% unlist() %>% as.vector(), 
+  #                          z = pie3_data() %>% filter(type == "가용병상") %>% select(sum_bed) %>% unlist() %>% as.vector(),
+  #                          name = "가용병상",
+  #                          color = "#02a8a8",
+  #                          dataLabels = list(useHTML = TRUE, format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>", distance = -40, style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none"))
+  #                     )
+  #                   )) %>%
+  #     hc_tooltip(headerFormat = "", pointFormat = "{point.name}: {point.y}") %>%
+  #     hc_add_series(pie3_data() %>% filter(type == "가용병상"), type = "pie", hcaes(y = n, z = round(n/sum_bed * 100,1)), innerSize = "100%", size = "100%",
+  #                   dataLabels = list(format = "<span style='font-size:30px'>{point.z}%</span>", useHTML = T, style = list(textAlign = "center", fontSize = "1.2em * 2vw"), align = "center", distance = -170), showInLegend=F,
+  #                   enableMouseTracking = FALSE) %>%
+  #     hc_colors(c("#e5dfdf", "#02a8a8"))
+  #   
+  # })
+  
+  ## pie4
+  output$pie4 <- renderHighchart({
+    highchart() %>% hc_title(text = "<b>생활치료센터 가용률</b>") %>%
+      hc_plotOptions(pie = list(center = c("50%", "50%"), dataLabels = list(useHTML = T, align = "center"))) %>%
+      hc_add_series(type = "pie", size = "100%", innerSize = "50%",
+                    data = list(
+                      list(y = pie4_data() %>% select(사용객실) %>% unlist() %>% as.vector(), 
+                           z = pie4_data() %>% select(총객실) %>% unlist() %>% as.vector(),
+                           name = "사용객실", 
+                           color = "#e5dfdf",
+                           dataLabels = list(useHTML = TRUE, format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>", distance = -30, style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none"))
+                      ),
+                      list(y = pie4_data() %>% select(가용객실) %>% unlist() %>% as.vector(), 
+                           z = pie4_data() %>% select(총객실) %>% unlist() %>% as.vector(),
+                           name = "가용객실",
+                           color = "#02a8a8",
+                           dataLabels = list(useHTML = TRUE, format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>", distance = -50, style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none"))
+                      )
+                    )) %>%
+      hc_tooltip(headerFormat = "", pointFormat = "{point.name}: {point.y}") %>%
+      hc_add_series(type = "pie", innerSize = "100%", size = "100%",
+                    data = list(
+                      list(
+                        y = pie4_data() %>% select(가용률) %>% unlist() %>% as.vector(),
+                        name = "가용률",
+                        dataLabels = list(format = "<span style='font-size:30px'>{point.y}%</span>", useHTML = T, style = list(textAlign = "center", fontSize = "1.2em * 2vw"), align = "center", distance = -170)
+                      )
+                    ),
+                    showInLegend=F,
+                    enableMouseTracking = FALSE
+      )
+    
+  })
+  ####################################### end piechart ###################################
+
+
+  output$병원별 <- renderHighchart({
+    data() %>%
+      filter(분류1 == "합계") %>%
+      gather("가용", "병상수", 사용병상:가용병상) %>%
+      mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE)) %>%
+      hchart(
+        type = "column",
+        hcaes("병원명", "병상수", group = "가용"),
+        stacking = "normal",
+        dataLabels = list(enabled = TRUE, color = "#323232", format = '<span style="font-size: 10px">{point.y}</span>')
+      ) %>%
+      hc_xAxis(
+        title = "",
+        labels = list(style = list(fontSize = "13px", color = "#323232", fontWeight = "bold"))
+      ) %>%
+      hc_yAxis(visible = FALSE) %>%
+      hc_colors(c("#e5dfdf", "#4d80e4")) %>%
+      hc_legend(
+        align = "inner", verticalAlign = "top",
+        layout = "vertical", x = 0, y = 30
+      ) %>%
+      hc_title(text = "<b>병원별 병상운용 현황</b>")
   })
 
-  ## 대시보드 ----
-  output$db_bed <- renderValueBox({
-    value <- summary()$전체 %>% sum()
-
-    valueBox(
-      paste0(value),
-      "전체 병상수",
-      color = "aqua",
-      icon = icon("bed")
-    )
+  output$중환자실 <- renderHighchart({
+    data() %>%
+      filter(분류1 == "중환자실") %>%
+      filter(총병상 != 0) %>%
+      select(병원명, 사용병상) %>%
+      gather("가용", "병상수", 사용병상) %>%
+      mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심")
+)) %>%
+      arrange(병원명) %>%
+      hchart(
+        type = "column",
+        hcaes("병원명", "병상수"),
+        dataLabels = list(
+          enabled = TRUE,
+          color = "#323232",
+          format = '<span style="font-size: 13px">{point.y}병상</span>'
+        )
+      ) %>%
+      hc_colors(c("#db4455")) %>%
+      hc_yAxis(visible = FALSE) %>%
+      hc_xAxis(
+        title = "",
+        labels = list(style = list(fontSize = "13px", color = "#323232", fontWeight = "bold"))
+      ) %>%
+      hc_chart(inverted = TRUE) %>%
+      hc_tooltip(pointFormat = "{point.y}병상") %>%
+      hc_title(text = "<b>중환자실 운용 현황</b>")
   })
 
-  output$db_use <- renderValueBox({
-    value <- summary()$사용 %>% sum()
+  ## map ----
+  output$map <- renderLeaflet({
+    join <- join() %>%
+      select(병원명, long, lat, 사용병상, 가용병상) %>%
+      rename("사용" = "사용병상", "가용" = "가용병상")
 
-    valueBox(
-      paste0(value),
-      "사용",
-      color = "red",
-      icon = icon("procedures")
-    )
-  })
-
-  output$db_empty <- renderValueBox({
-    value <- summary()$여유 %>% sum()
-
-    valueBox(
-      paste0(value),
-      "여유",
-      color = "green",
-      icon = icon("smile")
-    )
-  })
-
-  output$db_definite <- renderValueBox({
-    value <- sickbed() %>%
-      filter(의사.확진 == "확진") %>%
-      nrow()
-
-    valueBox(
-      paste0(value),
-      "확진자수",
-      color = "light-blue",
-      icon = icon("tired")
-    )
-  })
-
-  output$db_percent <- renderValueBox({
-    value <- round(sum(summary()$사용) / sum(summary()$전체) * 100, 1)
-
-    valueBox(
-      paste0(value, "%"),
-      "사용율",
-      color = "yellow",
-      icon = icon("procedures")
-    )
-  })
-
-  output$db_serious <- renderValueBox({
-    value <- sickbed() %>%
-      filter(중증도변화 %in% c("중증", "최중증")) %>%
-      nrow()
-
-    valueBox(
-      paste0(value),
-      "중증+최중증",
-      color = "purple",
-      icon = icon("dizzy")
-    )
-  })
-
-  output$dashboard_map <- renderLeaflet({
     leaflet() %>%
       addTiles() %>%
       # addProviderTiles("CartoDB.VoyagerLabelsUnder") %>%
       setView(lng = 127.06, lat = 37.36, zoom = 9) %>%
       addMinicharts(
-        join()$long, join()$lat,
+        join$long, join$lat,
         type = "pie",
-        chartdata = join()[, c("사용", "여유")],
-        colorPalette = c("#fe346e", "#5b8c5a")
+        opacity = 0.8,
+        layerId = join$병원명,
+        chartdata = join[, c("사용", "가용")],
+        colorPalette = c("#cccccc", "#4d80e4")
+        # width = 45, height = 45
       )
   })
 
-  output$dashboard_waffle <- renderPlot({
-    sickbed() %>%
-      group_by(bed) %>%
-      summarise(n = n()) %>%
-      mutate(bed = ifelse(bed == 1, "In Use", "Empty")) %>%
-      mutate(bed = factor(bed)) %>%
-      ggplot(aes(fill = bed, values = n)) +
-      geom_waffle(n_rows = 8, color = "white", flip = TRUE) +
-      scale_fill_manual(
-        name = NULL,
-        values = c("#5b8c5a", "#fe346e"),
-        labels = c("Empty", "In Use")
-      ) +
-      coord_equal() +
-      theme_enhance_waffle() +
-      theme_void() +
-      theme(legend.position = "bottom")
-  })
+  ## map ----
+  output$map2 <- renderLeaflet({
+    join <- join() %>%
+      select(병원명, long, lat, 사용병상, 가용병상) %>%
+      rename("사용" = "사용병상", "가용" = "가용병상")
 
-  styleDT = function(idx){
-    yellow = '#f9ca24' # yellow
-    red = '#e84118' # red
-    green = '#44bd32' # green
-    
-    buildBG = function(v, color){
-      paste0('background : linear-gradient(90deg, transparent ',v, color, v, ') center center / 98% 88% no-repeat;')
-    }
-    JS(paste0(
-      "function(row, data, index){ 
-      if(data[", idx, "] > 0){$(row).find('td:eq(", idx, ")').css({'background-color' : '",green,"', 'font-size' : '1.8em'});}
-      if(data[", idx, "] > 33.3){$(row).find('td:eq(", idx, ")').css({'background-color' : '",yellow,"', 'font-size' : '1.5em'});}
-      if(data[", idx, "] > 66.6){$(row).find('td:eq(", idx, ")').css({'background-color' : '",red,"', 'font-size' : '1em'});}
-      }"
-    ))
-  }
-  
-  TemporaryLink = data.frame(stringsAsFactors = FALSE,
-    hospital = c('성남','수원', '이천', '분당','안성','수도','명지'), 
-    전화번호 = c('031-738-7000', 
-             '031-8880-114', 
-             '031-630-4200', 
-             '1588-3369',
-             '031-8046-5000',
-             '1688-9151',
-             '031-810-5114'
-             )
-  )
-  
-  output$data_sickbed <- renderDataTable({
-    summary() %>%
-      right_join(TemporaryLink) %>%
-      arrange(desc(사용율)) %>%
-      datatable(
-        extensions = "Buttons",
-        rownames = FALSE, 
-        selection = 'none',
-        options = list(
-          pageLength = 10,
-          lengthMenu = c(10, 50, 100, 200, 300),
-          dom = "Blfrtip",
-          buttons = c("copy", "excel", "print"),
-          autoWidth = TRUE, 
-          rowCallback = styleDT(4),
-          order = list(list(3, "desc"))
-        )
-      ) %>%
-      formatStyle("사용율",
-        color = "#ffffff", # font color,
-        backgroundSize = "98% 88%",
-        backgroundRepeat = "no-repeat",
-        backgroundPosition = "center"
-      ) %>%
-      formatStyle(columns = c(1:4,6), fontSize = '1.5em')
-  })
-  
-  #
-  ## 환자분포 ----
-  output$distribution_serious_age <- renderPlotly({
-    p <- sickbed() %>%
-      ggplot(aes(중증도변화, 나이)) +
-      geom_boxplot() +
-      geom_jitter(aes(color = 성별)) +
-      scale_color_manual(values = c("#fe346e", "#381460")) +
-      ggthemes::theme_few() +
-      labs(
-        title = "중증도별 나이분포"
-      )
-    plotly::ggplotly(p)
-  })
-
-  output$distribution_etc <- renderPlotly({
-    p <- sickbed() %>%
-      group_by(특이사항) %>%
-      summarise(n = n()) %>%
-      filter(is.na(특이사항) == FALSE) %>%
-      ggplot(aes(reorder(특이사항, n), n)) +
-      geom_col(aes(fill = 특이사항)) +
-      theme(legend.position = "top") +
-      scale_fill_brewer(palette = 7) +
-      ggthemes::theme_few() +
-      labs(
-        title = "특이사항",
-        x = "특이사항",
-        y = "Count"
-      )
-    ggplotly(p)
-  })
-
-  ## 병원별 ----
-  output$by_hospital_waffle <- renderPlot({
-    sickbed() %>%
-      group_by(hospital, bed) %>%
-      summarise(n = n()) %>%
-      mutate(bed = ifelse(bed == 1, "In Use", "Empty")) %>%
-      mutate(bed = factor(bed)) %>%
-      ggplot(aes(fill = bed, values = n)) +
-      geom_waffle(n_rows = 10, color = "white", flip = TRUE) +
-      facet_wrap(~hospital, ncol = 1, strip.position = "right") +
-      scale_fill_manual(
-        name = NULL,
-        values = c("#5b8c5a", "#fe346e"),
-        labels = c("Empty", "In Use")
-      ) +
-      coord_equal() +
-      theme_enhance_waffle() +
-      theme_void(base_family = "NanumGothic") +
-      theme(
-        legend.position = "bottom",
-        strip.text = element_text(size = 20)
+    leaflet() %>%
+      addTiles() %>%
+      # addProviderTiles("CartoDB.DarkMatter") %>%
+      # setView(lng = 127.06, lat = 37.36, zoom = 9) %>%
+      addMinicharts(
+        join$long, join$lat,
+        # type = "pie",
+        layerId = join$병원명,
+        # opacity = 0.8,
+        chartdata = join[, c("사용", "가용")],
+        colorPalette = c("darkred", "darkblue"),
+        width = 70, height = 100,
+        popup = popupArgs(
+          labels = c("사용", "가용")
+        ),
+        showLabels = TRUE
       )
   })
-  
-  ## data raw ----
+
+  ## data ----
   output$data_raw <- renderDataTable({
-    sickbed() %>%
-      arrange(desc(중증도변화)) %>%
+    data() %>%
+      filter(분류1 %in% input$hospital1) %>%
       datatable(
         extensions = "Buttons",
         options = list(
-          pageLength = 50,
+          pageLength = 100,
           lengthMenu = c(10, 50, 100, 200, 300),
           dom = "Blfrtip",
           buttons = c("copy", "excel", "print")
         )
-      ) %>%
-      formatStyle("나이",
-        color = "#f4dada",
-        background = styleColorBar(c(0, 100), "#ce0f3d"),
-        backgroundSize = "98% 88%",
-        backgroundRepeat = "no-repeat",
-        backgroundPosition = "center"
-      ) %>%
-      formatStyle("중증도변화",
-                  color = "white",
-                  backgroundColor = styleEqual(c("경증", "중등도", "중증", "최중증"), c("#ffb2a7", "#e6739f", "#cc0e74", "#790c5a")),
-                  backgroundSize = "98% 88%",
-                  backgroundRepeat = "no-repeat",
-                  backgroundPosition = "center"
       )
   })
 }

@@ -1,0 +1,24 @@
+@font-face {
+  font-family: 'GGBatang_R'; /* 경기천년바탕 Regular */  
+  src: url('Batang_Regular.ttf')  format('truetype')
+}
+
+@font-face {
+  font-family: 'GGBatang_B'; /* 경기천년바탕 Bold */  
+  src: url('Batang_Bold.ttf')  format('truetype')
+}
+
+@font-face {
+  font-family: 'GGTitle_L'; /* 경기천년제목 Light */  
+  src: url('Title_Light.ttf')  format('truetype')
+}
+
+@font-face {
+  font-family: 'GGTitle_M'; /* 경기천년제목 Medium */  
+  src: url('Title_Medium.ttf')  format('truetype')
+}
+
+@font-face {
+  font-family: 'GGTitle_B'; /* 경기천년제목 Bold */  
+  src: url('Title_Bold.ttf')  format('truetype')
+}
