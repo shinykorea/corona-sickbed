@@ -35,7 +35,7 @@ file_name <- file %>%
 file_date <- file %>%
   pull(client_modified) %>%
   .[1] %>%
-  lubridate::ymd_hms()
+  lubridate::ymd_hms() + 60*60*9
 
 paste0("corona19/", file_name) %>%
   drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
@@ -345,7 +345,7 @@ server <- function(input, output, session) {
           useHTML = T,
           style = list(textAlign = "center", fontSize = "1.2em * 2vw"),
           align = "center",
-          distance = -17
+          distance = -170
         ),
         showInLegend = F,
         enableMouseTracking = FALSE
@@ -403,7 +403,7 @@ server <- function(input, output, session) {
               useHTML = T,
               style = list(textAlign = "center", fontSize = "1.2em * 2vw"),
               align = "center",
-              distance = -150
+              distance = -170
             )
           )
         ),
