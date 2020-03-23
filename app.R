@@ -24,21 +24,9 @@ library(shinymanager)
 library(rdrop2)
 token <- readRDS("token.rds")
 
-file <- drop_dir("corona19", dtoken = token) %>%
-  select(name, client_modified) %>%
-  arrange(desc(client_modified))
 
-file_name <- file %>%
-  pull(name) %>%
-  .[1]
 
-file_date <- file %>%
-  pull(client_modified) %>%
-  .[1] %>%
-  lubridate::ymd_hms() + 60*60*9
 
-paste0("corona19/", file_name) %>%
-  drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
 
 ## header ----
 header <- dashboardHeader(
@@ -68,24 +56,24 @@ sidebar <- dashboardSidebar(
 
 ## body ----
 body <- dashboardBody(
-
+  
   ### style
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "mytheme.css")
   ),
-
+  
   tags$style(
     type = "text/css",
     ".shiny-output-error { visibility: hidden; }",
     ".shiny-output-error:before { visibility: hidden; }"
   ),
-
+  
   useShinyjs(),
   tags$head(tags$style(type = "text/css", "table.dataTable tr.selected td, table.dataTable td.selected {background-color: #d1c4e9 !important;}")),
   tags$head(tags$style(type = "text/css", "th, td {text-align:center !important;}")),
   tags$head(tags$style(type = "text/css", "html, body {height:100% !important;}")),
   tags$head(includeCSS("www/includefont.css")),
-
+  
   ## Change Font Here ---------------------------------------------------
   ## Possible Options :
   ## GGTitle_B, GGTitle_L, GGTitle_M
@@ -97,11 +85,11 @@ body <- dashboardBody(
   tags$head(tags$style(type = "text/css", ".tabs .tab a, .tabs .tab a:hover, .tabs .tab a.active {font-size:1.5em; color : #311b92;}")),
   tags$head(tags$style(type = "text/css", ".skin-blue .main-header .logo .logo:hover {font-size:1.5em; color : #311b92;}")),
   tags$head(tags$style(HTML('.main-header .logo {font-family: "GGTitle_L", serif; font-weight: bold; font-size: 20px;}'))),
-
-
+  
+  
   ### Last Update
-  shiny.info::version(paste("Last Update:", file_date), position = "bottom right"),
-
+  uiOutput("shinyinfo"),
+  
   tabItems(
     ### Dashboard ----
     tabItem(
@@ -119,7 +107,7 @@ body <- dashboardBody(
         column(12, leafletOutput("map"))
       )
     ),
-
+    
     ## raw data ----
     tabItem(
       tabName = "data",
@@ -134,7 +122,7 @@ body <- dashboardBody(
         dataTableOutput("data_raw")
       )
     ),
-
+    
     tabItem(
       tabName = "map",
       tags$style(type = "text/css", "#map2 {height: calc(100vh - 80px) !important;}"),
@@ -145,76 +133,102 @@ body <- dashboardBody(
 
 # ui ----
 ui <- dashboardPage(header, sidebar, body)
+ui <- secure_app(ui, enable_admin = T)
 
 # server ----
 
 server <- function(input, output, session) {
-
+  
+  
+  res_auth <- secure_server(
+    check_credentials = check_credentials("database.sqlite")
+  )
+  
   ## data ----
+  
+  file_info <- reactive({
+    file <- drop_dir("corona19", dtoken = token) %>%
+      select(name, client_modified) %>%
+      arrange(desc(client_modified))
+    
+    file_name <- file %>%
+      pull(name) %>%
+      .[1]
+    
+    file_date <- file %>%
+      pull(client_modified) %>%
+      .[1] %>%
+      lubridate::ymd_hms() + 60*60*9
+    
+    paste0("corona19/", file_name) %>% drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
+    return(list(file_name, file_date))
+  })
+  
+  
   data <- reactive({
-    data <- readxl::read_excel(paste0("data/", file_name))
+    data <- readxl::read_excel(paste0("data/", file_info()[[1]]))
     data <- data %>% select(1:6)
     colnames(data) <- c("병원명", "분류1", "분류2", "총병상", "사용병상", "가용병상")
     return(data)
   })
-
+  
   data2 <- reactive({
-    data <- readxl::read_excel(paste0("data/", file_name), sheet = 2)
+    data <- readxl::read_excel(paste0("data/", file_info()[[1]]), sheet = 2)
     data <- data %>% select(1:3)
     colnames(data) <- c("센터명", "총객실", "사용객실")
     return(data)
   })
-
-
+  
+  
   hospital <- reactive({
     hospital <- readxl::read_excel("hospital.xlsx")
     return(hospital)
   })
-
+  
   join <- reactive({
     join <- data() %>%
       filter(분류1 == "합계")
-
+    
     join <- hospital() %>%
       left_join(join)
-
+    
     return(join)
   })
-
+  
   ################### data preprocess 4 piechart #############################3
   data_smmry <- reactive({
     data() %>%
       group_by(`분류1`) %>%
       summarise(사용병상 = sum(사용병상), 가용병상 = sum(가용병상))
   })
-
+  
   pie1_data <- reactive({
     data_smmry() %>%
       filter(`분류1` == "합계") %>%
       gather(type, n, ends_with("병상")) %>%
       mutate(sum_bed = sum(n))
   })
-
+  
   pie1_2_data <- reactive({
     data_smmry() %>%
       filter(`분류1` != "합계") %>%
       gather(type, n, ends_with("병상"))
   })
-
+  
   pie2_data <- reactive({
     data_smmry() %>%
       filter(`분류1` == "중환자실") %>%
       gather(type, n, ends_with("병상")) %>%
       mutate(sum_bed = sum(n))
   })
-
+  
   pie3_data <- reactive({
     data_smmry() %>%
       filter(`분류1` == "음압") %>%
       gather(type, n, ends_with("병상")) %>%
       mutate(sum_bed = sum(n))
   })
-
+  
   pie4_data <- reactive({
     data2() %>%
       mutate(가용객실 = 총객실 - 사용객실) %>%
@@ -225,7 +239,7 @@ server <- function(input, output, session) {
       ) %>%
       mutate(사용률 = round(사용객실 / 총객실 * 100, 1))
   })
-
+  
   ## dashboard ----
   #### pie 1
   pie1 <- reactive({
@@ -264,35 +278,35 @@ server <- function(input, output, session) {
       ) %>%
       hc_tooltip(headerFormat = "", pointFormat = "{point.name}: {point.y}") %>%
       hc_add_series(pie1_data() %>% filter(type == "사용병상"),
-        type = "pie",
-        hcaes(x = n, y = sum_bed, z = round(n / sum_bed * 100, 1)),
-        innerSize = "100%", size = "100%",
-        dataLabels = list(
-          format = "<span style='font-size:30px'>{point.z}%</span>",
-          useHTML = T,
-          style = list(textAlign = "center", fontSize = "1.2em * 2vw", color = "black"),
-          align = "center",
-          distance = -170
-        ),
-        showInLegend = F,
-        enableMouseTracking = FALSE
+                    type = "pie",
+                    hcaes(x = n, y = sum_bed, z = round(n / sum_bed * 100, 1)),
+                    innerSize = "100%", size = "100%",
+                    dataLabels = list(
+                      format = "<span style='font-size:30px'>{point.z}%</span>",
+                      useHTML = T,
+                      style = list(textAlign = "center", fontSize = "1.2em * 2vw", color = "black"),
+                      align = "center",
+                      distance = -170
+                    ),
+                    showInLegend = F,
+                    enableMouseTracking = FALSE
       ) %>%
       hc_colors(c("#381460", "#b21f66", "#fe346e"))
   })
-
+  
   pie1_drill_1 <- reactive({
     pie1_2_data() %>%
       filter(type == "사용병상") %>%
       select(`분류1`, n)
   })
-
+  
   pie1_drill_2 <- reactive({
     pie1_2_data() %>%
       filter(type == "가용병상") %>%
       select(`분류1`, n)
   })
-
-
+  
+  
   ## renderUI ----
   output$pie1 <- renderHighchart({
     pie1() %>% hc_drilldown(series = list(
@@ -300,7 +314,7 @@ server <- function(input, output, session) {
       list(id = "가용병상", type = "pie", data = list_parse2(pie1_drill_2()))
     ))
   })
-
+  
   ### pie2
   output$pie2 <- renderHighchart({
     highchart() %>%
@@ -337,21 +351,21 @@ server <- function(input, output, session) {
       ) %>%
       hc_tooltip(headerFormat = "", pointFormat = "{point.name}: {point.y}") %>%
       hc_add_series(pie2_data() %>% filter(type == "사용병상"),
-        type = "pie",
-        hcaes(x = n, y = sum_bed, z = round(n / sum_bed * 100, 1)),
-        innerSize = "100%", size = "100%",
-        dataLabels = list(
-          format = "<span style='font-size:30px'>{point.z}%</span>",
-          useHTML = T,
-          style = list(textAlign = "center", fontSize = "1.2em * 2vw"),
-          align = "center",
-          distance = -170
-        ),
-        showInLegend = F,
-        enableMouseTracking = FALSE
+                    type = "pie",
+                    hcaes(x = n, y = sum_bed, z = round(n / sum_bed * 100, 1)),
+                    innerSize = "100%", size = "100%",
+                    dataLabels = list(
+                      format = "<span style='font-size:30px'>{point.z}%</span>",
+                      useHTML = T,
+                      style = list(textAlign = "center", fontSize = "1.2em * 2vw"),
+                      align = "center",
+                      distance = -170
+                    ),
+                    showInLegend = F,
+                    enableMouseTracking = FALSE
       )
   })
-
+  
   ## pie4
   output$pie4 <- renderHighchart({
     highchart() %>%
@@ -412,8 +426,8 @@ server <- function(input, output, session) {
       )
   })
   ####################################### end piechart ###################################
-
-
+  
+  
   output$병원별 <- renderHighchart({
     data() %>%
       filter(분류1 == "합계") %>%
@@ -437,7 +451,7 @@ server <- function(input, output, session) {
       ) %>%
       hc_title(text = "<b>병원별 병상운용 현황</b>")
   })
-
+  
   output$중환자실 <- renderHighchart({
     data() %>%
       filter(분류1 == "중환자실") %>%
@@ -472,13 +486,13 @@ server <- function(input, output, session) {
       hc_tooltip(pointFormat = "{point.y}병상") %>%
       hc_title(text = "<b>중환자실 운용 현황</b>")
   })
-
+  
   ## map ----
   output$map <- renderLeaflet({
     join <- join() %>%
       select(병원명, long, lat, 사용병상, 가용병상) %>%
       rename("사용" = "사용병상", "가용" = "가용병상")
-
+    
     leaflet() %>%
       addTiles() %>%
       # addProviderTiles("CartoDB.VoyagerLabelsUnder") %>%
@@ -493,13 +507,13 @@ server <- function(input, output, session) {
         # width = 45, height = 45
       )
   })
-
+  
   ## map ----
   output$map2 <- renderLeaflet({
     join <- join() %>%
       select(병원명, long, lat, 사용병상, 가용병상) %>%
       rename("사용" = "사용병상", "가용" = "가용병상")
-
+    
     leaflet() %>%
       addTiles() %>%
       # addProviderTiles("CartoDB.DarkMatter") %>%
@@ -518,7 +532,7 @@ server <- function(input, output, session) {
         showLabels = TRUE
       )
   })
-
+  
   ## data ----
   output$data_raw <- renderDataTable({
     data() %>%
@@ -533,6 +547,10 @@ server <- function(input, output, session) {
         )
       )
   })
+  
+  output$shinyinfo <- renderUI(shiny.info::version(paste("Last Update:", file_info()[[2]]), position = "bottom right"))
+  
+  
 }
 
 # run app  --------------
