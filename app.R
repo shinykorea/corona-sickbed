@@ -24,7 +24,8 @@ library(shinymanager)
 library(rdrop2)
 token <- readRDS("token.rds")
 
-
+### Report
+library(rmarkdown)
 
 
 
@@ -50,7 +51,13 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     menuItem("대시보드", tabName = "dashboard", icon = icon("dashboard")),
     menuItem("데이터", tabName = "data", icon = icon("database")),
-    menuItem("Map", tabName = "map", icon = icon("map-marked-alt"))
+    menuItem("Map", tabName = "map", icon = icon("map-marked-alt")),
+    shinyWidgets::downloadBttn(
+      outputId = "report_sickbed",
+      label = "Download report",
+      style = "bordered",
+      color = "default"
+    )
   )
 )
 
@@ -141,7 +148,8 @@ server <- function(input, output, session) {
   
   
   res_auth <- secure_server(
-    check_credentials = check_credentials("database.sqlite")
+    check_credentials = check_credentials("database.sqlite"),
+    timeout = 60 * 24 * 30,  ## 30 days
   )
   
   ## data ----
@@ -159,6 +167,8 @@ server <- function(input, output, session) {
       pull(client_modified) %>%
       .[1] %>%
       lubridate::ymd_hms() + 60*60*9
+    
+    file.remove(paste0("data/", list.files("data/")))
     
     paste0("corona19/", file_name) %>% drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
     return(list(file_name, file_date))
@@ -308,15 +318,19 @@ server <- function(input, output, session) {
   
   
   ## renderUI ----
-  output$pie1 <- renderHighchart({
+  out.pie1 <- reactive({
     pie1() %>% hc_drilldown(series = list(
       list(id = "사용병상", type = "pie", data = list_parse2(pie1_drill_1())),
       list(id = "가용병상", type = "pie", data = list_parse2(pie1_drill_2()))
     ))
   })
   
+  output$pie1 <- renderHighchart({
+    out.pie1()
+  })
+  
   ### pie2
-  output$pie2 <- renderHighchart({
+  out.pie2 <- reactive({
     highchart() %>%
       hc_title(text = "<b>중환자실 가동률</b>") %>%
       hc_plotOptions(pie = list(center = c("50%", "50%"), dataLabels = list(useHTML = T, align = "center"))) %>%
@@ -366,8 +380,12 @@ server <- function(input, output, session) {
       )
   })
   
+  output$pie2 <- renderHighchart({
+    out.pie2()
+  })
+  
   ## pie4
-  output$pie4 <- renderHighchart({
+  out.pie4 <- reactive({
     highchart() %>%
       hc_title(text = "<b>생활치료센터 가동률</b>") %>%
       hc_plotOptions(pie = list(center = c("50%", "50%"), dataLabels = list(useHTML = T, align = "center"))) %>%
@@ -425,10 +443,13 @@ server <- function(input, output, session) {
         enableMouseTracking = FALSE
       )
   })
+  
+  output$pie4 <- renderHighchart({
+    out.pie4()
+  })
   ####################################### end piechart ###################################
   
-  
-  output$병원별 <- renderHighchart({
+  out.perhospital <- reactive({
     data() %>%
       filter(분류1 == "합계") %>%
       gather("가용", "병상수", 사용병상:가용병상) %>%
@@ -452,7 +473,11 @@ server <- function(input, output, session) {
       hc_title(text = "<b>병원별 병상운용 현황</b>")
   })
   
-  output$중환자실 <- renderHighchart({
+  output$병원별 <- renderHighchart({
+    out.perhospital()
+  })
+  
+  out.icu <- reactive({
     data() %>%
       filter(분류1 == "중환자실") %>%
       filter(총병상 != 0) %>%
@@ -487,8 +512,12 @@ server <- function(input, output, session) {
       hc_title(text = "<b>중환자실 운용 현황</b>")
   })
   
+  output$중환자실 <- renderHighchart({
+    out.icu()
+  })
+  
   ## map ----
-  output$map <- renderLeaflet({
+  out.map <- reactive({
     join <- join() %>%
       select(병원명, long, lat, 사용병상, 가용병상) %>%
       rename("사용" = "사용병상", "가용" = "가용병상")
@@ -508,8 +537,12 @@ server <- function(input, output, session) {
       )
   })
   
+  output$map <- renderLeaflet({
+    out.map()
+  })
+  
   ## map ----
-  output$map2 <- renderLeaflet({
+  out.map2 <- reactive({
     join <- join() %>%
       select(병원명, long, lat, 사용병상, 가용병상) %>%
       rename("사용" = "사용병상", "가용" = "가용병상")
@@ -532,25 +565,72 @@ server <- function(input, output, session) {
         showLabels = TRUE
       )
   })
+  output$map2 <- renderLeaflet({
+    out.map2()
+  })
   
   ## data ----
-  output$data_raw <- renderDataTable({
+  out.data_raw <- reactive({
     data() %>%
-      filter(분류1 %in% input$hospital1) %>%
-      datatable(
-        extensions = "Buttons",
-        options = list(
-          pageLength = 100,
-          lengthMenu = c(10, 50, 100, 200, 300),
-          dom = "Blfrtip",
-          buttons = c("copy", "excel", "print")
-        )
-      )
+      filter(분류1 %in% input$hospital1)
+    
+  })
+  
+  output$data_raw <- renderDataTable({
+    datatable(out.data_raw(),
+              extensions = "Buttons",
+              options = list(
+                pageLength = 100,
+                lengthMenu = c(10, 50, 100, 200, 300),
+                dom = "Blfrtip",
+                buttons = c("copy", "excel", "print")
+              )
+    )
   })
   
   output$shinyinfo <- renderUI(shiny.info::version(paste("Last Update:", file_info()[[2]]), position = "bottom right"))
   
   
+  ## Report ----
+  output$report_sickbed <- downloadHandler(
+    filename = function() {
+      paste0(paste0('Report_sickbed_', file_info()[[2]]), '.html')
+    },
+    content = function(file) {
+      withProgress(message = 'Download in progress',
+                   detail = 'This may take a while...', value = 0, {
+                     for (i in 1:5) {
+                       incProgress(1/5)
+                       Sys.sleep(0.2)
+                     }
+                     
+                     src <- normalizePath("www/report.Rmd")
+                     
+                     # temporarily switch to the temp dir, in case you do not have write
+                     # permission to the current working directory
+                     owd <- setwd(tempdir())
+                     on.exit(setwd(owd))
+                     file.copy(src, 'report_sickbed.Rmd', overwrite = TRUE)
+                     
+                     out <- render('report_sickbed.Rmd', 
+                                   html_document(toc=F, highlight="textmate", theme="cosmo", toc_float = F),
+                                   params=list(datetime = file_info()[[2]] ,
+                                               pie1 = out.pie1(),
+                                               pie2 = out.pie2(),
+                                               pie4 = out.pie4(),
+                                               perhospital = out.perhospital(),
+                                               icu = out.icu(),
+                                               map = out.map(),
+                                               map2 = out.map2(),
+                                               data_raw = out.data_raw()),
+                                   
+                                   envir = new.env()
+                     )
+                     file.rename(out, file)
+                     
+                   })
+      
+    })
 }
 
 # run app  --------------
