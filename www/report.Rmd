@@ -1,0 +1,75 @@
+---
+title: "병상현황 리포트"
+author: "Shinykorea"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+  fig_height: 6
+  fig_width: 10
+highlight: textmate
+theme: cosmo
+toc: no
+toc_float: no
+params:
+  datetime: "2020-03-21"
+  pie1: 1
+  pie2: 1
+  pie4: 1
+  perhospital: 1
+  icu: 1
+  map: 1
+  map2: 1
+  data_raw: 1
+  
+editor_options: 
+  chunk_output_type: console
+---
+  
+  <style>
+p {line-height: 2.5em;}
+pre, code {white-space:pre !important; overflow-x:scroll !important}
+body .main-container {
+  margin-left: 0;
+  margin-right: auto;
+}
+</style>
+
+
+  
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,fig.align="center",message=FALSE, warning=FALSE,fig.width = 15,cache=F,dpi=300)
+library(data.table);library(magrittr);library(highcharter);library(lubridate)
+```
+
+
+#### 최종 업데이트 시간: `r params$datetime`
+
+
+
+## 대시보드 
+
+```{r, out.width="100%"}
+list(params$pie1, params$pie2, params$pie4) %>% 
+  hw_grid(rowheight = 450, ncol = 3)  
+
+params$perhospital
+
+params$icu
+
+#params$map
+
+```
+
+## 데이터
+
+```{r, out.width="100%"}
+kable(params$data_raw)
+```
+
+
+
+```{r, out.width="100%"}
+## 맵
+#params$map2
+```
