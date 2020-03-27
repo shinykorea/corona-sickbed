@@ -4,6 +4,7 @@ author: "Shinykorea"
 date: "`r Sys.Date()`"
 output:
   html_document:
+  # word_document:
   fig_height: 6
   fig_width: 10
 highlight: textmate
@@ -11,6 +12,7 @@ theme: cosmo
 toc: no
 toc_float: no
 params:
+  
   datetime: "2020-03-21"
   pie1: 1
   pie2: 1
@@ -20,7 +22,6 @@ params:
   map: 1
   map2: 1
   data_raw: 1
-  
 editor_options: 
   chunk_output_type: console
 ---

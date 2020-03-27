@@ -177,6 +177,7 @@ server <- function(input, output, session) {
   
   data <- reactive({
     data <- readxl::read_excel(paste0("data/", file_info()[[1]]))
+    # data <- readxl::read_excel("sample-data.xlsx")
     data <- data %>% select(1:6)
     colnames(data) <- c("병원명", "분류1", "분류2", "총병상", "사용병상", "가용병상")
     return(data)
@@ -184,6 +185,7 @@ server <- function(input, output, session) {
   
   data2 <- reactive({
     data <- readxl::read_excel(paste0("data/", file_info()[[1]]), sheet = 2)
+    # data <- readxl::read_excel("sample-data.xlsx", sheet = 2)
     data <- data %>% select(1:3)
     colnames(data) <- c("센터명", "총객실", "사용객실")
     return(data)
@@ -326,7 +328,9 @@ server <- function(input, output, session) {
   })
   
   output$pie1 <- renderHighchart({
-    out.pie1()
+    out.pie1() %>% 
+      hc_exporting(enabled = TRUE,
+                   filename = "plot")
   })
   
   ### pie2
@@ -381,7 +385,9 @@ server <- function(input, output, session) {
   })
   
   output$pie2 <- renderHighchart({
-    out.pie2()
+    out.pie2() %>% 
+      hc_exporting(enabled = TRUE,
+                   filename = "plot")
   })
   
   ## pie4
@@ -445,7 +451,9 @@ server <- function(input, output, session) {
   })
   
   output$pie4 <- renderHighchart({
-    out.pie4()
+    out.pie4() %>% 
+      hc_exporting(enabled = TRUE,
+                   filename = "plot")
   })
   ####################################### end piechart ###################################
   
@@ -470,11 +478,13 @@ server <- function(input, output, session) {
         align = "inner", verticalAlign = "top",
         layout = "vertical", x = 0, y = 30
       ) %>%
-      hc_title(text = "<b>병원별 병상운용 현황</b>")
+      hc_title(text = "<b>병원별 병상운용 현황</b>") 
   })
   
   output$병원별 <- renderHighchart({
-    out.perhospital()
+    out.perhospital() %>% 
+      hc_exporting(enabled = TRUE,
+                   filename = "plot")
   })
   
   out.icu <- reactive({
@@ -483,7 +493,7 @@ server <- function(input, output, session) {
       filter(총병상 != 0) %>%
       select(병원명, 사용병상:가용병상) %>%
       gather("가용", "병상수", 사용병상:가용병상) %>%
-      mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심"))) %>%
+      mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원"))) %>%
       mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE)) %>%
       arrange(병원명) %>%
       hchart(
@@ -513,7 +523,9 @@ server <- function(input, output, session) {
   })
   
   output$중환자실 <- renderHighchart({
-    out.icu()
+    out.icu() %>% 
+      hc_exporting(enabled = TRUE,
+                   filename = "plot")
   })
   
   ## map ----

@@ -2,3 +2,5 @@
 .Rproj.user
 rsconnect
 .DS_Store
+token.rds
+sample-data.xlsx
