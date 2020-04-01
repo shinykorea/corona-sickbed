@@ -1,76 +1,212 @@
 ---
-title: "병상현황 리포트"
-author: "Shinykorea"
+title: "G-CoMS 병상운용현황"
+author: "경기도청 코로나19 데이터팀"
 date: "`r Sys.Date()`"
 output:
-  html_document:
-  # word_document:
-  fig_height: 6
-  fig_width: 10
-highlight: textmate
-theme: cosmo
-toc: no
-toc_float: no
+  word_document:
+    reference_docx: style-ref.docx
 params:
-  
-  datetime: "2020-03-21"
-  pie1: 1
-  pie2: 1
-  pie4: 1
-  perhospital: 1
-  icu: 1
-  map: 1
-  map2: 1
-  data_raw: 1
-editor_options: 
-  chunk_output_type: console
+  data: 1
+  data2: 1
+ 
 ---
   
-  <style>
-p {line-height: 2.5em;}
-pre, code {white-space:pre !important; overflow-x:scroll !important}
-body .main-container {
-  margin-left: 0;
-  margin-right: auto;
-}
-</style>
 
 
-  
-  
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = F,fig.align="center",message=FALSE, warning=FALSE,fig.width = 15,cache=F,dpi=300)
-library(data.table);library(magrittr);library(highcharter);library(lubridate)
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(gridExtra)
+
+
+data_raw <- params$data %>%
+  group_by(분류1) %>%
+  summarise(사용병상 = sum(사용병상), 가용병상 = sum(가용병상)) 
+
+data_raw2 <- params$data
 ```
 
+```{r echo=FALSE, dpi=330, fig.height=1.3}
+## data
+data <- data_raw %>%
+  filter(분류1 == "합계") %>%
+  gather(key = "상태", value = "병상수", 사용병상:가용병상) %>%
+  mutate(lab.ypos = cumsum(병상수) - 0.5*병상수)
 
-#### 최종 업데이트 시간: `r params$datetime`
+## pie1
+pie1 <- ggplot(data, aes(x = 2, y = 병상수, fill = 상태)) +
+  geom_bar(stat = "identity", color = "white") +
+  coord_polar(theta = "y", start = 0) +
+  geom_text(
+    aes(y = lab.ypos, 
+        label = paste0(data$상태, "\n", data$병상수, "/", sum(data$병상수))
+    ),
+    family = "GyeonggiBatangR",
+    size = 1.5
+  ) +
+  scale_fill_manual(values = c("#4d80e4", "#e5dfdf")) +
+  theme_void() +
+  xlim(.5, 2.5) +
+  labs(
+    title = "전체 병상 가동률"
+  ) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
+    text = element_text(family = "GyeonggiBatangR")
+  ) +
+  annotate(
+    geom = 'text', 
+    x = 0.5, y = 0, 
+    label = paste0(round(data$병상수[1]/sum(data$병상수)*100, 1), "%"),
+    family = "GyeonggiBatangB",
+    size = 3.5
+  )
 
+# data2
+data <- data_raw %>%
+  filter(분류1 == "중환자실") %>%
+  gather(key = "상태", value = "병상수", 사용병상:가용병상) %>%
+  mutate(lab.ypos = cumsum(병상수) - 0.5*병상수)
 
+# pie2
+pie2 <- ggplot(data, aes(x = 2, y = 병상수, fill = 상태)) +
+  geom_bar(stat = "identity", color = "white") +
+  coord_polar(theta = "y", start = 0) +
+  geom_text(
+    aes(y = lab.ypos, 
+        label = paste0(data$상태, "\n", data$병상수, "/", sum(data$병상수))
+    ),
+    family = "GyeonggiBatangR",
+    size = 1.5
+  ) +
+  scale_fill_manual(values = c("#db4455", "#e5dfdf")) +
+  theme_void() +
+  xlim(.5, 2.5) +
+  labs(
+    title = "중환자실 가동률"
+  ) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
+    text = element_text(family = "GyeonggiBatangR")
+  ) +
+  annotate(
+    geom = 'text', 
+    x = 0.5, y = 0, 
+    label = paste0(round(data$병상수[1]/sum(data$병상수)*100, 1), "%"),
+    family = "GyeonggiBatangB",
+    size = 3.5
+  )
 
-## 대시보드 
+data1 <- params$data2 %>%
+  mutate(가용객실수 = 총객실 - 사용객실) %>%
+  select(c("센터명", "사용객실", "가용객실수"))
+colnames(data1) <- c("병원명", "사용병상", "가용병상")
+data1 <- data1 %>%
+  gather(key = "상태", value = "병상수", 사용병상:가용병상) %>%
+  group_by(상태) %>%
+  summarise(병상수 = sum(병상수)) %>%
+  mutate(lab.ypos = cumsum(병상수) - 0.5*병상수)
 
-```{r, out.width="100%"}
-list(params$pie1, params$pie2, params$pie4) %>% 
-  hw_grid(rowheight = 450, ncol = 3)  
+pie3 <- ggplot(data1, aes(x = 2, y = 병상수, fill = 상태)) +
+  geom_bar(stat = "identity", color = "white") +
+  coord_polar(theta = "y", start = 0) +
+  geom_text(
+    aes(y = lab.ypos, 
+        label = paste0(data1$상태, "\n", data1$병상수, "/", sum(data1$병상수))
+    ),
+    family = "GyeonggiBatangR",
+    size = 1.5
+  ) +
+  scale_fill_manual(values = c("#db4455", "#e5dfdf")) +
+  theme_void() +
+  xlim(.5, 2.5) +
+  labs(
+    title = "생활치료센터 가동률"
+  ) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
+    text = element_text(family = "GyeonggiBatangR")
+  ) +
+  annotate(
+    geom = 'text', 
+    x = 0.5, y = 0, 
+    label = paste0(round(data1$병상수[1]/sum(data1$병상수)*100, 1), "%"),
+    family = "GyeonggiBatangB",
+    size = 3.5
+  )
 
-params$perhospital
-
-params$icu
-
-#params$map
-
+grid.arrange(pie1, pie2, pie3, nrow = 1)
 ```
 
-## 데이터
+```{r echo=FALSE, dpi=330, fig.height=1.5, warning=FALSE}
+## Bar Graph1 ----
+data <- data_raw2 %>%
+  filter(분류1 == "합계") %>%
+  gather("가용", "병상수", 사용병상:가용병상) %>%
+  mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE))
 
-```{r, out.width="100%"}
-kable(params$data_raw)
-```
+bar1 <- data %>%
+  ggplot(aes(병원명, 병상수, fill = 가용)) +
+  geom_col() +
+  geom_text(
+    aes(label = ifelse(병상수 != 0, 병상수, NA)), 
+    position = position_stack(vjust = 0.5),
+    family = "GyeonggiBatangR",
+    size = 2
+  ) +
+  scale_fill_manual(values = c("#e5dfdf", "#4d80e4")) +
+  labs(
+    title = "병원별 병상운용 현황",
+    x = "",
+    y = ""
+  ) +
+  theme_void(base_family = "GyeonggiBatangR") +
+  theme(
+    legend.position = "none",
+    legend.text = element_text(family = "GyeonggiBatangR", size = 5),
+    legend.title = element_text(family = "GyeonggiBatangR", size = 5),
+    plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
+    text = element_text(family = "GyeonggiBatangR"),
+    axis.text.x = element_text(angle = 45, hjust = 0.7, family = "GyeonggiBatangR", size = 5),
+  )
+
+data <- data_raw2 %>%
+  filter(분류1 == "중환자실") %>%
+  filter(병원명 %in% c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원")) %>%
+  gather("가용", "병상수", 사용병상:가용병상) %>%
+  mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE)) %>%
+  mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원")))
+
+bar2 <- data %>%
+  ggplot(aes(병원명, 병상수, fill = 가용)) +
+  geom_col() +
+  geom_text(
+    aes(label = ifelse(병상수 != 0, 병상수, NA)), 
+    position = position_stack(vjust = 0.5),
+    family = "GyeonggiBatangR",
+    size = 2
+  ) +
+  scale_fill_manual(values = c("#e5dfdf", "#db4455")) +
+  labs(
+    title = "중환자실 운용 현황",
+    x = "",
+    y = ""
+  ) +
+  theme_void(base_family = "GyeonggiBatangR") +
+  theme(
+    legend.position = "none",
+    legend.text = element_text(family = "GyeonggiBatangR", size = 5),
+    legend.title = element_text(family = "GyeonggiBatangR", size = 5),
+    plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
+    text = element_text(family = "GyeonggiBatangR"),
+    axis.text.x = element_text(angle = 45, hjust = 0.8, family = "GyeonggiBatangR", size = 5)
+  )
 
 
-
-```{r, out.width="100%"}
-## 맵
-#params$map2
+grid.arrange(bar1, bar2, widths = c(0.7, 0.3), nrow = 1)
 ```

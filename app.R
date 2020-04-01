@@ -168,7 +168,13 @@ server <- function(input, output, session) {
       .[1] %>%
       lubridate::ymd_hms() + 60*60*9
     
-    file.remove(paste0("data/", list.files("data/")))
+    if (!dir.exists("data")){
+      dir.create("data")
+    }
+    
+    if (length(list.files("data/")) > 0){
+      file.remove(paste0("data/", list.files("data/")))
+    }
     
     paste0("corona19/", file_name) %>% drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
     return(list(file_name, file_date))
@@ -190,6 +196,7 @@ server <- function(input, output, session) {
     colnames(data) <- c("센터명", "총객실", "사용객실")
     return(data)
   })
+  
   
   
   hospital <- reactive({
@@ -606,7 +613,7 @@ server <- function(input, output, session) {
   ## Report ----
   output$report_sickbed <- downloadHandler(
     filename = function() {
-      paste0(paste0('Report_sickbed_', file_info()[[2]]), '.html')
+      paste0(paste0('Report_sickbed_', file_info()[[2]]), '.docx')
     },
     content = function(file) {
       withProgress(message = 'Download in progress',
@@ -625,16 +632,9 @@ server <- function(input, output, session) {
                      file.copy(src, 'report_sickbed.Rmd', overwrite = TRUE)
                      
                      out <- render('report_sickbed.Rmd', 
-                                   html_document(toc=F, highlight="textmate", theme="cosmo", toc_float = F),
-                                   params=list(datetime = file_info()[[2]] ,
-                                               pie1 = out.pie1(),
-                                               pie2 = out.pie2(),
-                                               pie4 = out.pie4(),
-                                               perhospital = out.perhospital(),
-                                               icu = out.icu(),
-                                               map = out.map(),
-                                               map2 = out.map2(),
-                                               data_raw = out.data_raw()),
+                                   word_document(toc=F, reference_docx = "/home/js/ShinyApps/corona-sickbed/www/style-ref.docx"), ## Shiny server에선 Full path 필요.
+                                   params=list(data = data(),
+                                               data2 = data2()),
                                    
                                    envir = new.env()
                      )
