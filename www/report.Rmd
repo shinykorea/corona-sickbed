@@ -1,24 +1,34 @@
 ---
 title: "G-CoMS 병상운용현황"
-author: "경기도청 코로나19 데이터팀"
+author: "경기도 코로나19 긴급대책단"
 date: "`r Sys.Date()`"
 output:
   word_document:
     reference_docx: style-ref.docx
+  pdf_document: default
+classoption: landscape
+geometry: left=1cm,right=1cm,top=0cm,bottom=0cm
+header-includes: \usepackage{kotex} \usepackage[doublespacing]{setspace} \usepackage{multirow} 
 params:
   data: 1
   data2: 1
- 
 ---
   
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, dev = "png", fig.showtext=TRUE)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(gridExtra)
+
+## Apply font from local ttf file
+library(showtext)
+showtext.opts(dpi = 330)                                ## same to rmd chunk
+font_add("GyeonggiBatangR", "Batang_Regular.ttf")
+font_add("GyeonggiBatangB", "Batang_Bold.ttf")
+
 
 
 data_raw <- params$data %>%
@@ -43,7 +53,7 @@ pie1 <- ggplot(data, aes(x = 2, y = 병상수, fill = 상태)) +
     aes(y = lab.ypos, 
         label = paste0(data$상태, "\n", data$병상수, "/", sum(data$병상수))
     ),
-    family = "GyeonggiBatangR",
+    family = "GyeonggiBatangB",
     size = 1.5
   ) +
   scale_fill_manual(values = c("#4d80e4", "#e5dfdf")) +
@@ -55,7 +65,7 @@ pie1 <- ggplot(data, aes(x = 2, y = 병상수, fill = 상태)) +
   theme(
     legend.position = "none",
     plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
-    text = element_text(family = "GyeonggiBatangR")
+    text = element_text(family = "GyeonggiBatangB")
   ) +
   annotate(
     geom = 'text', 
@@ -79,7 +89,7 @@ pie2 <- ggplot(data, aes(x = 2, y = 병상수, fill = 상태)) +
     aes(y = lab.ypos, 
         label = paste0(data$상태, "\n", data$병상수, "/", sum(data$병상수))
     ),
-    family = "GyeonggiBatangR",
+    family = "GyeonggiBatangB",
     size = 1.5
   ) +
   scale_fill_manual(values = c("#db4455", "#e5dfdf")) +
@@ -91,7 +101,7 @@ pie2 <- ggplot(data, aes(x = 2, y = 병상수, fill = 상태)) +
   theme(
     legend.position = "none",
     plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
-    text = element_text(family = "GyeonggiBatangR")
+    text = element_text(family = "GyeonggiBatangB")
   ) +
   annotate(
     geom = 'text', 
@@ -118,10 +128,10 @@ pie3 <- ggplot(data1, aes(x = 2, y = 병상수, fill = 상태)) +
     aes(y = lab.ypos, 
         label = paste0(data1$상태, "\n", data1$병상수, "/", sum(data1$병상수))
     ),
-    family = "GyeonggiBatangR",
+    family = "GyeonggiBatangB",
     size = 1.5
   ) +
-  scale_fill_manual(values = c("#db4455", "#e5dfdf")) +
+  scale_fill_manual(values = c("#02a8a8", "#e5dfdf")) +
   theme_void() +
   xlim(.5, 2.5) +
   labs(
@@ -130,7 +140,7 @@ pie3 <- ggplot(data1, aes(x = 2, y = 병상수, fill = 상태)) +
   theme(
     legend.position = "none",
     plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
-    text = element_text(family = "GyeonggiBatangR")
+    text = element_text(family = "GyeonggiBatangB")
   ) +
   annotate(
     geom = 'text', 
@@ -147,7 +157,6 @@ grid.arrange(pie1, pie2, pie3, nrow = 1)
 ## Bar Graph1 ----
 data <- data_raw2 %>%
   filter(분류1 == "합계") %>%
-  mutate(병원명 = factor(병원명, level = .$병원명)) %>%
   gather("가용", "병상수", 사용병상:가용병상) %>%
   mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE))
 
@@ -157,7 +166,7 @@ bar1 <- data %>%
   geom_text(
     aes(label = ifelse(병상수 != 0, 병상수, NA)), 
     position = position_stack(vjust = 0.5),
-    family = "GyeonggiBatangR",
+    family = "GyeonggiBatangB",
     size = 2
   ) +
   scale_fill_manual(values = c("#e5dfdf", "#4d80e4")) +
@@ -166,14 +175,14 @@ bar1 <- data %>%
     x = "",
     y = ""
   ) +
-  theme_void(base_family = "GyeonggiBatangR") +
+  theme_void(base_family = "GyeonggiBatangB") +
   theme(
     legend.position = "none",
-    legend.text = element_text(family = "GyeonggiBatangR", size = 5),
-    legend.title = element_text(family = "GyeonggiBatangR", size = 5),
+    legend.text = element_text(family = "GyeonggiBatangB", size = 5),
+    legend.title = element_text(family = "GyeonggiBatangB", size = 5),
     plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
-    text = element_text(family = "GyeonggiBatangR"),
-    axis.text.x = element_text(angle = 45, hjust = 0.7, vjust = 1, family = "GyeonggiBatangR", size = 5),
+    text = element_text(family = "GyeonggiBatangB"),
+    axis.text.x = element_text(angle = 45, hjust = 0.7, vjust = 1, family = "GyeonggiBatangB", size = 5),
   )
 
 data <- data_raw2 %>%
@@ -189,7 +198,7 @@ bar2 <- data %>%
   geom_text(
     aes(label = ifelse(병상수 != 0, 병상수, NA)), 
     position = position_stack(vjust = 0.5),
-    family = "GyeonggiBatangR",
+    family = "GyeonggiBatangB",
     size = 2
   ) +
   scale_fill_manual(values = c("#e5dfdf", "#db4455")) +
@@ -198,14 +207,14 @@ bar2 <- data %>%
     x = "",
     y = ""
   ) +
-  theme_void(base_family = "GyeonggiBatangR") +
+  theme_void(base_family = "GyeonggiBatangB") +
   theme(
     legend.position = "none",
-    legend.text = element_text(family = "GyeonggiBatangR", size = 5),
-    legend.title = element_text(family = "GyeonggiBatangR", size = 5),
+    legend.text = element_text(family = "GyeonggiBatangB", size = 5),
+    legend.title = element_text(family = "GyeonggiBatangB", size = 5),
     plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
-    text = element_text(family = "GyeonggiBatangR"),
-    axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1, family = "GyeonggiBatangR", size = 5)
+    text = element_text(family = "GyeonggiBatangB"),
+    axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1, family = "GyeonggiBatangB", size = 5)
   )
 
 
