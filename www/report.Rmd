@@ -28,7 +28,7 @@ data_raw <- params$data %>%
 data_raw2 <- params$data
 ```
 
-```{r echo=FALSE, dpi=330, fig.height=1.3}
+```{r echo=FALSE, dpi=330, fig.height=2.5, fig.width=10}
 ## data
 data <- data_raw %>%
   filter(분류1 == "합계") %>%
@@ -143,10 +143,11 @@ pie3 <- ggplot(data1, aes(x = 2, y = 병상수, fill = 상태)) +
 grid.arrange(pie1, pie2, pie3, nrow = 1)
 ```
 
-```{r echo=FALSE, dpi=330, fig.height=1.5, warning=FALSE}
+```{r echo=FALSE, dpi=330, fig.height=3, fig.width=10, warning=FALSE}
 ## Bar Graph1 ----
 data <- data_raw2 %>%
   filter(분류1 == "합계") %>%
+  mutate(병원명 = factor(병원명, level = .$병원명)) %>%
   gather("가용", "병상수", 사용병상:가용병상) %>%
   mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE))
 
@@ -172,7 +173,7 @@ bar1 <- data %>%
     legend.title = element_text(family = "GyeonggiBatangR", size = 5),
     plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
     text = element_text(family = "GyeonggiBatangR"),
-    axis.text.x = element_text(angle = 45, hjust = 0.7, family = "GyeonggiBatangR", size = 5),
+    axis.text.x = element_text(angle = 45, hjust = 0.7, vjust = 1, family = "GyeonggiBatangR", size = 5),
   )
 
 data <- data_raw2 %>%
@@ -204,7 +205,7 @@ bar2 <- data %>%
     legend.title = element_text(family = "GyeonggiBatangR", size = 5),
     plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
     text = element_text(family = "GyeonggiBatangR"),
-    axis.text.x = element_text(angle = 45, hjust = 0.8, family = "GyeonggiBatangR", size = 5)
+    axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1, family = "GyeonggiBatangR", size = 5)
   )
 
 
