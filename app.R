@@ -501,7 +501,7 @@ server <- function(input, output, session) {
       filter(총병상 != 0) %>%
       select(병원명, 사용병상:가용병상) %>%
       gather("가용", "병상수", 사용병상:가용병상) %>%
-      mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원"))) %>%
+      mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원", "동탄성심"))) %>%
       mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE)) %>%
       arrange(병원명) %>%
       hchart(
