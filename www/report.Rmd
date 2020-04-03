@@ -111,15 +111,19 @@ pie2 <- ggplot(data, aes(x = 2, y = 병상수, fill = 상태)) +
     size = 3.5
   )
 
+# pie3
 data1 <- params$data2 %>%
   mutate(가용객실수 = 총객실 - 사용객실) %>%
   select(c("센터명", "사용객실", "가용객실수"))
-colnames(data1) <- c("병원명", "사용병상", "가용병상")
+colnames(data1) <- c("병원명", "사용객실", "가용객실")
 data1 <- data1 %>%
-  gather(key = "상태", value = "병상수", 사용병상:가용병상) %>%
+  gather(key = "상태", value = "병상수", 사용객실:가용객실) %>%
+  # filter(가용병상 != 0 & 사용병상 != 0)
   group_by(상태) %>%
   summarise(병상수 = sum(병상수)) %>%
-  mutate(lab.ypos = cumsum(병상수) - 0.5*병상수)
+  mutate(상태 = factor(상태, levels = c("가용객실", "사용객실"), order = TRUE)) %>%
+  arrange(desc(상태)) %>%
+  mutate(lab.ypos = cumsum(병상수) - 0.5*병상수) 
 
 pie3 <- ggplot(data1, aes(x = 2, y = 병상수, fill = 상태)) +
   geom_bar(stat = "identity", color = "white") +
@@ -157,6 +161,7 @@ grid.arrange(pie1, pie2, pie3, nrow = 1)
 ## Bar Graph1 ----
 data <- data_raw2 %>%
   filter(분류1 == "합계") %>%
+  mutate(병원명 = factor(병원명, level = .$병원명)) %>%
   gather("가용", "병상수", 사용병상:가용병상) %>%
   mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE))
 
@@ -187,10 +192,10 @@ bar1 <- data %>%
 
 data <- data_raw2 %>%
   filter(분류1 == "중환자실") %>%
-  filter(병원명 %in% c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원")) %>%
+  filter(병원명 %in% c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원", "동탄성심")) %>%
   gather("가용", "병상수", 사용병상:가용병상) %>%
   mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE)) %>%
-  mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원")))
+  mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원", "동탄성심")))
 
 bar2 <- data %>%
   ggplot(aes(병원명, 병상수, fill = 가용)) +
@@ -220,3 +225,7 @@ bar2 <- data %>%
 
 grid.arrange(bar1, bar2, widths = c(0.7, 0.3), nrow = 1)
 ```
+
+
+
+
