@@ -52,6 +52,7 @@ sidebar <- dashboardSidebar(
     menuItem("대시보드", tabName = "dashboard", icon = icon("dashboard")),
     menuItem("데이터", tabName = "data", icon = icon("database")),
     menuItem("Map", tabName = "map", icon = icon("map-marked-alt")),
+    radioButtons("reporttype", "Report type", c("pdf", "docx"), inline = T),
     shinyWidgets::downloadBttn(
       outputId = "report_sickbed",
       label = "Download report",
@@ -613,7 +614,7 @@ server <- function(input, output, session) {
   ## Report ----
   output$report_sickbed <- downloadHandler(
     filename = function() {
-      paste0(paste0('Report_sickbed_', file_info()[[2]]), '.docx')
+      paste0(paste0('Report_sickbed_', file_info()[[2]]), '.', input$reporttype)
     },
     content = function(file) {
       withProgress(message = 'Download in progress',
@@ -631,13 +632,24 @@ server <- function(input, output, session) {
                      on.exit(setwd(owd))
                      file.copy(src, 'report_sickbed.Rmd', overwrite = TRUE)
                      
-                     out <- render('report_sickbed.Rmd', 
-                                   word_document(toc=F, reference_docx = "/home/js/ShinyApps/corona-sickbed/www/style-ref.docx"), ## Shiny server에선 Full path 필요.
-                                   params=list(data = data(),
-                                               data2 = data2()),
-                                   
-                                   envir = new.env()
-                     )
+                     out <- NULL
+                     if (input$reporttype == "docx"){
+                       out <- render('report_sickbed.Rmd', 
+                                     word_document(toc=F, reference_docx= "/home/js/ShinyApps/corona-sickbed/www/style-ref.docx"),   ## shiny-server 에선 full path 필요
+                                     params=list(data = data(),
+                                                 data2 = data2()),
+                                     
+                                     envir = new.env()
+                       )
+                     } else{
+                       out <- render('report_sickbed.Rmd', 
+                                     pdf_document(toc=F),
+                                     params=list(data = data(),
+                                                 data2 = data2()),
+                                     
+                                     envir = new.env()
+                       )
+                     }
                      file.rename(out, file)
                      
                    })
