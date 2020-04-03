@@ -414,7 +414,7 @@ server <- function(input, output, session) {
             dataLabels = list(
               useHTML = TRUE,
               format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>",
-              distance = -30,
+              distance = -45,
               style = list(textAlign = "center", fontSize = "1.2em * 1vw", color = "black", textDecoration = "none")
             )
           ),
@@ -426,7 +426,7 @@ server <- function(input, output, session) {
             dataLabels = list(
               useHTML = TRUE,
               format = "<span style='font-size:12px'>{point.name}<br>{point.y}/{point.z}</span>",
-              distance = -50,
+              distance = -40,
               style = list(
                 textAlign = "center",
                 fontSize = "1.2em * 1vw",
@@ -635,7 +635,7 @@ server <- function(input, output, session) {
                      out <- NULL
                      if (input$reporttype == "docx"){
                        out <- render('report_sickbed.Rmd', 
-                                     word_document(toc=F, reference_docx= "/home/js/ShinyApps/corona-sickbed/www/style-ref.docx"),   ## shiny-server 에선 full path 필요
+                                     word_document(toc=F, reference_docx= "/home/js/ShinyApps/corona-sickbed/www/style-ref.docx"),
                                      params=list(data = data(),
                                                  data2 = data2()),
                                      
