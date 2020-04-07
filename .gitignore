@@ -4,4 +4,5 @@ rsconnect
 .DS_Store
 token.rds
 sample-data.xlsx
+hospital.xlsx
 data

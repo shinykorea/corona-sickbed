@@ -27,8 +27,6 @@ token <- readRDS("token.rds")
 ### Report
 library(rmarkdown)
 
-
-
 ## header ----
 header <- dashboardHeader(
   title = "G-CoMS 병상운용현황",
@@ -184,7 +182,7 @@ server <- function(input, output, session) {
   
   data <- reactive({
     data <- readxl::read_excel(paste0("data/", file_info()[[1]]))
-    # data <- readxl::read_excel("sample-data.xlsx")
+    # data <- readxl::read_excel("example.xlsx")
     data <- data %>% select(1:6)
     colnames(data) <- c("병원명", "분류1", "분류2", "총병상", "사용병상", "가용병상")
     return(data)
@@ -192,7 +190,7 @@ server <- function(input, output, session) {
   
   data2 <- reactive({
     data <- readxl::read_excel(paste0("data/", file_info()[[1]]), sheet = 2)
-    # data <- readxl::read_excel("sample-data.xlsx", sheet = 2)
+    # data <- readxl::read_excel("example.xlsx", sheet = 2)
     data <- data %>% select(1:3)
     colnames(data) <- c("센터명", "총객실", "사용객실")
     return(data)
@@ -468,6 +466,7 @@ server <- function(input, output, session) {
   out.perhospital <- reactive({
     data() %>%
       filter(분류1 == "합계") %>%
+      mutate(병원명 = factor(병원명, level = .$병원명)) %>%
       gather("가용", "병상수", 사용병상:가용병상) %>%
       mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE)) %>%
       hchart(
@@ -498,10 +497,10 @@ server <- function(input, output, session) {
   out.icu <- reactive({
     data() %>%
       filter(분류1 == "중환자실") %>%
+      mutate(병원명 = factor(병원명, level = .$병원명)) %>%
       filter(총병상 != 0) %>%
       select(병원명, 사용병상:가용병상) %>%
       gather("가용", "병상수", 사용병상:가용병상) %>%
-      mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원", "동탄성심"))) %>%
       mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE)) %>%
       arrange(병원명) %>%
       hchart(

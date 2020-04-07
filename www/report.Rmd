@@ -12,6 +12,8 @@ header-includes: \usepackage{kotex} \usepackage[doublespacing]{setspace} \usepac
 params:
   data: 1
   data2: 1
+editor_options: 
+  chunk_output_type: console
 ---
   
 
@@ -26,10 +28,8 @@ library(gridExtra)
 ## Apply font from local ttf file
 library(showtext)
 showtext.opts(dpi = 330)                                ## same to rmd chunk
-font_add("GyeonggiBatangR", "Batang_Regular.ttf")
-font_add("GyeonggiBatangB", "Batang_Bold.ttf")
-
-
+font_add("GyeonggiBatangR", "/home/js/ShinyApps/corona-sickbed/www/Batang_Regular.ttf")
+font_add("GyeonggiBatangB", "/home/js/ShinyApps/corona-sickbed/www/Batang_Bold.ttf")
 
 data_raw <- params$data %>%
   group_by(분류1) %>%
@@ -192,10 +192,10 @@ bar1 <- data %>%
 
 data <- data_raw2 %>%
   filter(분류1 == "중환자실") %>%
-  filter(병원명 %in% c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원", "동탄성심")) %>%
+  filter(총병상 != 0) %>%
+  mutate(병원명 = factor(병원명, level = .$병원명)) %>%
   gather("가용", "병상수", 사용병상:가용병상) %>%
-  mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE)) %>%
-  mutate(병원명 = factor(병원명, levels = c("성남의료원", "분당서울대", "명지병원", "고려대안산", "순천향부천", "아주대병원", "한림대성심", "일산병원", "동탄성심")))
+  mutate(가용 = factor(가용, level = c("사용병상", "가용병상"), ordered = TRUE))
 
 bar2 <- data %>%
   ggplot(aes(병원명, 병상수, fill = 가용)) +
