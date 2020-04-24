@@ -106,8 +106,9 @@ body <- dashboardBody(
         column(width = 4, highchartOutput(outputId = "pie4"))
       ),
       fluidPage(
-        column(8, highchartOutput("병원별") %>% withLoader(type = "html", loader = "loader7")),
-        column(4, highchartOutput("중환자실") %>% withLoader(type = "html", loader = "loader7"))
+        column(7, highchartOutput("병원별") %>% withLoader(type = "html", loader = "loader7")),
+        column(3, highchartOutput("중환자실") %>% withLoader(type = "html", loader = "loader7")),
+        column(2, highchartOutput("생활치료센터") %>% withLoader(type = "html", loader = "loader7")),
       ),
       fluidPage(
         column(12, leafletOutput("map"))
@@ -334,9 +335,7 @@ server <- function(input, output, session) {
   })
   
   output$pie1 <- renderHighchart({
-    out.pie1() %>% 
-      hc_exporting(enabled = TRUE,
-                   filename = "plot")
+    out.pie1() 
   })
   
   ### pie2
@@ -391,9 +390,7 @@ server <- function(input, output, session) {
   })
   
   output$pie2 <- renderHighchart({
-    out.pie2() %>% 
-      hc_exporting(enabled = TRUE,
-                   filename = "plot")
+    out.pie2() 
   })
   
   ## pie4
@@ -457,9 +454,7 @@ server <- function(input, output, session) {
   })
   
   output$pie4 <- renderHighchart({
-    out.pie4() %>% 
-      hc_exporting(enabled = TRUE,
-                   filename = "plot")
+    out.pie4() 
   })
   ####################################### end piechart ###################################
   
@@ -475,6 +470,7 @@ server <- function(input, output, session) {
         stacking = "normal",
         dataLabels = list(enabled = TRUE, color = "#323232", format = '<span style="font-size: 10px">{point.y}</span>')
       ) %>%
+      hc_plotOptions(column = list(pointWidth = 20)) %>%
       hc_xAxis(
         title = "",
         labels = list(style = list(fontSize = "13px", color = "#323232", fontWeight = "bold"))
@@ -489,9 +485,7 @@ server <- function(input, output, session) {
   })
   
   output$병원별 <- renderHighchart({
-    out.perhospital() %>% 
-      hc_exporting(enabled = TRUE,
-                   filename = "plot")
+    out.perhospital() 
   })
   
   out.icu <- reactive({
@@ -513,6 +507,7 @@ server <- function(input, output, session) {
           format = '<span style="font-size: 13px">{point.y}</span>'
         )
       ) %>%
+      hc_plotOptions(column = list(pointWidth = 20)) %>%
       hc_colors(c("#e5dfdf", "#db4455")) %>%
       # hc_colors(c("#db4455")) %>%
       hc_yAxis(visible = FALSE) %>%
@@ -530,10 +525,42 @@ server <- function(input, output, session) {
   })
   
   output$중환자실 <- renderHighchart({
-    out.icu() %>% 
-      hc_exporting(enabled = TRUE,
-                   filename = "plot")
+    out.icu() 
   })
+  
+  output$생활치료센터 <- renderHighchart({
+    
+    data2() %>%
+      mutate(가용객실 = 총객실 - 사용객실) %>%
+      select(센터명, 가용객실, 사용객실) %>%
+      gather("가용", "병상수", 가용객실:사용객실) %>%
+      mutate(가용 = factor(가용, levels = c("사용객실", "가용객실"))) %>%
+      hchart(
+        type = "column",
+        hcaes("센터명", "병상수", group = "가용"),
+        stacking = "normal",
+        dataLabels = list(
+          enabled = TRUE,
+          color = "#323232",
+          format = '<span style="font-size: 13px">{point.y}</span>'
+        )
+      ) %>%
+      hc_plotOptions(column = list(pointWidth = 20)) %>%
+      hc_colors(c("#e5dfdf", "#02a8a8")) %>%
+      hc_yAxis(visible = FALSE) %>%
+      hc_xAxis(
+        title = "",
+        labels = list(style = list(fontSize = "13px", color = "#323232", fontWeight = "bold"), rotation = -45)
+      ) %>%
+      hc_legend(
+        align = "inner", verticalAlign = "top",
+        layout = "vertical", x = 0, y = 30
+      ) %>%
+      hc_tooltip(pointFormat = "{point.y}병상") %>%
+      hc_title(text = "<b>생활치료센터 운용 현황</b>")
+    
+  })
+  
   
   ## map ----
   out.map <- reactive({
