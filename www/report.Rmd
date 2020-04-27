@@ -167,7 +167,7 @@ data <- data_raw2 %>%
 
 bar1 <- data %>%
   ggplot(aes(병원명, 병상수, fill = 가용)) +
-  geom_col() +
+  geom_col(width = 0.7) +
   geom_text(
     aes(label = ifelse(병상수 != 0, 병상수, NA)), 
     position = position_stack(vjust = 0.5),
@@ -222,8 +222,40 @@ bar2 <- data %>%
     axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1, family = "GyeonggiBatangB", size = 5)
   )
 
+bar3 <- params$data2 %>%
+      mutate(가용객실 = 총객실 - 사용객실) %>%
+      select(센터명, 가용객실, 사용객실) %>%
+      mutate(센터명 = factor(센터명, level = .$센터명))%>%
+      gather("가용", "병상수", 가용객실:사용객실) %>%
+      mutate(가용 = factor(가용, levels = c("사용객실", "가용객실"))) %>%
+  ggplot(aes(센터명, 병상수, fill = 가용)) +
+  geom_col(width = 0.3) +
+  geom_text(
+    aes(label = ifelse(병상수 != 0, 병상수, NA)), 
+    position = position_stack(vjust = 0.5),
+    family = "GyeonggiBatangB",
+    size = 2
+  ) +
+  scale_fill_manual(values = c("#e5dfdf", "#02a8a8")) +
+  labs(
+    title = "생활치료센터 운용 현황",
+    x = "",
+    y = ""
+  ) +
+  theme_void(base_family = "GyeonggiBatangB") +
+  theme(
+    legend.position = "none",
+    legend.text = element_text(family = "GyeonggiBatangB", size = 5),
+    legend.title = element_text(family = "GyeonggiBatangB", size = 5),
+    plot.title = element_text(hjust = 0.5, size = 8, family = "GyeonggiBatangB"),
+    text = element_text(family = "GyeonggiBatangB"),
+    axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1, family = "GyeonggiBatangB", size = 5)
+  )
+      
+  
 
-grid.arrange(bar1, bar2, widths = c(0.7, 0.3), nrow = 1)
+
+grid.arrange(bar1, bar2, bar3, widths = c(0.6, 0.25, 0.15), nrow = 1)
 ```
 
 
