@@ -19,5 +19,10 @@ Gyeonggi Corona Management System
 - `token.Rda` 파일이 연동되어야 본 코드의 실행이 가능함
 - Coding Style Rule: [Tidyverse style](https://style.tidyverse.org/)
 
+## 기여자(가나다순)
+- :octocat: 김진섭 [@jinseob2kim](https://github.com/jinseob2kim)
+- :octocat: 김진환 [@jhk0530](https://github.com/jhk0530)
+- :octocat: 나영준 [@youngjunna](https://github.com/youngjunna)
+- :octocat: 탁온식 [@takos1026](https://github.com/takos1026)
 
-![](www/footer.jpeg)
+![](www/header.png)
