@@ -1,7 +1,6 @@
 ---
 title: "G-CoMS 병상운용현황"
 author: "경기도 코로나19 긴급대책단"
-date: "`r Sys.Date()`"
 output:
   word_document:
     reference_docx: style-ref.docx
@@ -12,6 +11,8 @@ header-includes: \usepackage{kotex} \usepackage[doublespacing]{setspace} \usepac
 params:
   data: 1
   data2: 1
+  dtime: 1
+date: "`r params$dtime`"
 editor_options: 
   chunk_output_type: console
 ---

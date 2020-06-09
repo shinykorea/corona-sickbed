@@ -158,7 +158,7 @@ server <- function(input, output, session) {
   past_info <- reactive({
     file <- drop_dir("corona19/왜가리", dtoken = token)$name
     dtime <- sapply(strsplit(sapply(strsplit(file, "(", fixed = T), `[[`, 2), ")"), `[[`, 1)
-    return(sort(unique(dtime)))
+    return(sort(unique(dtime), decreasing = T))
   })
   
   output$dtime <- renderUI({
@@ -691,7 +691,8 @@ server <- function(input, output, session) {
                      if (input$reporttype == "docx"){
                        out <- render('report_sickbed.Rmd', 
                                      word_document(toc=F, reference_docx= "/home/js/ShinyApps/corona-sickbed/www/style-ref.docx"),
-                                     params=list(data = data(),
+                                     params=list(dtime = ifelse(input$date == "Latest", as.character(Sys.Date()), input$date),
+                                                 data = data(),
                                                  data2 = data2()),
                                      
                                      envir = new.env()
@@ -699,7 +700,8 @@ server <- function(input, output, session) {
                      } else{
                        out <- render('report_sickbed.Rmd', 
                                      pdf_document(toc=F),
-                                     params=list(data = data(),
+                                     params=list(dtime = ifelse(input$date == "Latest", as.character(Sys.Date()), input$date),
+                                                 data = data(),
                                                  data2 = data2()),
                                      
                                      envir = new.env()
