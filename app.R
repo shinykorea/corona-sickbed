@@ -47,6 +47,7 @@ header <- dashboardHeader(
 sidebar <- dashboardSidebar(
   width = 350,
   sidebarMenu(
+    uiOutput("dtime"),
     menuItem("대시보드", tabName = "dashboard", icon = icon("dashboard")),
     menuItem("데이터", tabName = "data", icon = icon("database")),
     menuItem("Map", tabName = "map", icon = icon("map-marked-alt")),
@@ -154,35 +155,63 @@ server <- function(input, output, session) {
   
   ## data ----
   
+  past_info <- reactive({
+    file <- drop_dir("corona19/왜가리", dtoken = token)$name
+    dtime <- sapply(strsplit(sapply(strsplit(file, "(", fixed = T), `[[`, 2), ")"), `[[`, 1)
+    return(sort(unique(dtime), decreasing = T))
+  })
+  
+  output$dtime <- renderUI({
+    tagList(
+      selectInput("date", "시간 선택", choices = c("Latest", past_info()))
+    )
+  })
+  
   file_info <- reactive({
-    file <- drop_dir("corona19", dtoken = token) %>%
-      select(name, client_modified) %>%
-      arrange(desc(client_modified))
-    
-    file_name <- file %>%
-      pull(name) %>%
-      .[1]
-    
-    file_date <- file %>%
-      pull(client_modified) %>%
-      .[1] %>%
-      lubridate::ymd_hms() + 60*60*9
-    
-    if (!dir.exists("data")){
-      dir.create("data")
+    req(input$date)
+    if (input$date == "Latest"){
+      file <- drop_dir("corona19", dtoken = token) %>%
+        select(name, client_modified) %>%
+        arrange(desc(client_modified))
+      
+      file_name <- file %>%
+        pull(name) %>%
+        .[1]
+      
+      file_date <- file %>%
+        pull(client_modified) %>%
+        .[1] %>%
+        lubridate::ymd_hms() + 60*60*9
+      
+      if (!dir.exists("data")){
+        dir.create("data")
+      }
+      
+      #if (length(list.files("data/")) > 0){
+      #  file.remove(paste0("data/", list.files("data/")))
+      #}
+      
+      paste0("corona19/", file_name) %>% drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
+    } else{
+      file <- drop_dir("corona19/왜가리", dtoken = token) %>% 
+        select(name, client_modified) %>%
+        arrange(desc(client_modified))
+      file_name <- file[grep(input$date, file$name)[1], ]$name
+      file_date <- file[grep(input$date, file$name)[1], ]$client_modified %>% lubridate::ymd_hms() + 60*60*9
+      
+      if (!dir.exists("data")){
+        dir.create("data")
+      }
+      
+      paste0("corona19/왜가리/", file_name) %>% drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
     }
     
-    if (length(list.files("data/")) > 0){
-      file.remove(paste0("data/", list.files("data/")))
-    }
-    
-    paste0("corona19/", file_name) %>% drop_download(local_path = "data", overwrite = TRUE, dtoken = token)
     return(list(file_name, file_date))
   })
   
   
   data <- reactive({
-    data <- readxl::read_excel(paste0("data/", file_info()[[1]]))
+    data <- readxl::read_excel(paste0("data/", file_info()[[1]]), sheet = "병상현황")
     # data <- readxl::read_excel("example.xlsx")
     data <- data %>% select(1:6)
     colnames(data) <- c("병원명", "분류1", "분류2", "총병상", "사용병상", "가용병상")
@@ -190,7 +219,7 @@ server <- function(input, output, session) {
   })
   
   data2 <- reactive({
-    data <- readxl::read_excel(paste0("data/", file_info()[[1]]), sheet = 2)
+    data <- readxl::read_excel(paste0("data/", file_info()[[1]]), sheet = "생활치료센터")
     # data <- readxl::read_excel("example.xlsx", sheet = 2)
     data <- data %>% select(1:3)
     colnames(data) <- c("센터명", "총객실", "사용객실")
@@ -662,7 +691,8 @@ server <- function(input, output, session) {
                      if (input$reporttype == "docx"){
                        out <- render('report_sickbed.Rmd', 
                                      word_document(toc=F, reference_docx= "/home/js/ShinyApps/corona-sickbed/www/style-ref.docx"),
-                                     params=list(data = data(),
+                                     params=list(dtime = ifelse(input$date == "Latest", as.character(Sys.Date()), input$date),
+                                                 data = data(),
                                                  data2 = data2()),
                                      
                                      envir = new.env()
@@ -670,7 +700,8 @@ server <- function(input, output, session) {
                      } else{
                        out <- render('report_sickbed.Rmd', 
                                      pdf_document(toc=F),
-                                     params=list(data = data(),
+                                     params=list(dtime = ifelse(input$date == "Latest", as.character(Sys.Date()), input$date),
+                                                 data = data(),
                                                  data2 = data2()),
                                      
                                      envir = new.env()
